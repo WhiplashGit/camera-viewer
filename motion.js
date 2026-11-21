@@ -25,8 +25,10 @@ const DIFF_W = 64, DIFF_H = 36;           // motion grid
 const PIXEL_DELTA = 28;                   // grey-level change that counts as "changed"
 const POPUP_HOLD_MS = 25000;              // keep a pop-up this long after the last detection
 const COOLDOWN_MS = 8000;
-const MAX_DETECT_PER_PASS = 3;           // AI checks per pass, busiest cameras first
-const DETECT_BACKOFF_MS = 15000;          // re-check a camera that keeps changing with nothing found this often                 // don't re-alert the same camera faster than this
+const MAX_DETECT_PER_PASS = 4;           // AI checks per pass, most "new" movement first
+const NOISE_ALPHA = 0.04;                 // how fast a cell learns it is noisy (~25 passes)
+const NOISY = 0.35;                       // cells changing this often are treated as background
+const LOG_MAX = 40;                 // don't re-alert the same camera faster than this
 const KEY_HOLD_MS = 30000;                // full-screen alert length for key cameras
 const maxPopups = () => (Math.min(window.innerWidth, window.innerHeight) < 600 ? 2 : 4);
 
@@ -106,14 +108,15 @@ async function startMotion() {
       // Cameras that keep changing with nothing found (trees in wind, rain,
       // night noise) are only re-checked every so often.
       const now = Date.now();
-      const picked = candidates
-        .filter(c => {
-          const st = camState.get(c.id);
-          const active = st.lastHit && now - st.lastHit < 15000;
-          return active || !st.lastDetect || now - st.lastDetect > DETECT_BACKOFF_MS;
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, MAX_DETECT_PER_PASS);
+      // Cameras that just had a hit, or haven't had an AI check in a while, go first.
+      for (const c of candidates) {
+        const st = camState.get(c.id);
+        if (st.lastHit && now - st.lastHit < 15000) c.score += 1;
+        if (!st.lastDetect || now - st.lastDetect > 10000) c.score += 0.5;
+      }
+      candidates.sort((a, b) => b.score - a.score);
+      const picked = candidates.slice(0, MAX_DETECT_PER_PASS);
+      for (const c of candidates.slice(MAX_DETECT_PER_PASS)) logEvent(c.id, 'Movement, waiting for a free AI check');
       for (const c of picked) {
         if (gen !== motionGen) break;
         try { await detectCamera(c); }
@@ -176,9 +179,19 @@ async function diffCamera(id) {
     if (nb >= 2) { changed[i] = 1; n++; }
   }
   const frac = n / grey.length;
+  if (frac > 0.6) return null;                    // whole-picture lighting change (clouds, IR switching)
+
+  // Learn which cells are always moving, and count only movement in normally still areas.
+  st.noise = st.noise || new Float32Array(grey.length);
+  let novel = 0;
+  for (let i = 0; i < grey.length; i++) {
+    if (changed[i] && st.noise[i] < NOISY) novel++;
+    st.noise[i] += NOISE_ALPHA * (changed[i] - st.noise[i]);
+  }
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
-  if (frac < sens.change || frac > 0.6) return null;   // nothing moved, or a whole-picture lighting change
-  return { id, changed, score: frac };
+  const score = novel / grey.length;
+  if (score < sens.change) return null;
+  return { id, changed, score };
 }
 
 async function detectCamera({ id, changed }) {
@@ -206,9 +219,40 @@ async function detectCamera({ id, changed }) {
     for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) inside += changed[yy * DIFF_W + xx];
     if (inside >= 2) hits.push({ label, score: d.score, bbox: d.bbox });
   }
-  if (!hits.length) { big.close?.(); return; }
+  if (!hits.length) {
+    big.close?.();
+    const seen = [...new Set(dets.map(d => TARGETS[d.class]).filter(Boolean))];
+    logEvent(id, seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : 'Movement checked, no person, vehicle or animal');
+    return;
+  }
   st.lastHit = Date.now();
+  logEvent(id, 'Pop-up: ' + [...new Set(hits.map(h => h.label))].join(', '), true);
   onDetection(id, hits, big);
+}
+
+/* ---------- Activity log ---------- */
+
+const activity = [];
+function logEvent(id, text, hit) {
+  const last = activity[0];
+  if (last && last.id === id && last.text === text && Date.now() - last.t < 20000) { last.t = Date.now(); last.n++; }
+  else activity.unshift({ t: Date.now(), id, text, hit: !!hit, n: 1 });
+  if (activity.length > LOG_MAX) activity.length = LOG_MAX;
+  renderActivity();
+}
+
+function renderActivity() {
+  const box = $('#motionLog');
+  if (!box || $('#setup').hidden) return;
+  box.textContent = '';
+  if (!activity.length) { box.textContent = 'Nothing yet. Movement and AI checks will be listed here.'; return; }
+  for (const a of activity) {
+    const row = document.createElement('div');
+    row.className = 'log-row' + (a.hit ? ' hit' : '');
+    const time = new Date(a.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    row.textContent = `${time} · ${displayName(a.id)} · ${a.text}` + (a.n > 1 ? ` (×${a.n})` : '');
+    box.appendChild(row);
+  }
 }
 
 /* ---------- Usage stats (last 60 seconds) ---------- */
@@ -230,7 +274,8 @@ function motionStatsText() {
 
 function updateMotionStats() {
   const el = $('#motionStats');
-  if (el) el.textContent = motionStatsText();
+  if (el) el.textContent = mcfg().enabled ? motionStatsText() : 'Motion pop-ups are paused.';
+  renderActivity();
   const b = $('#btnMotion');
   if (b && b.dataset.state === 'on') b.title = `Watching ${watchedCams().length} cameras. ${motionStatsText()} Click to pause.`;
 }
@@ -398,6 +443,7 @@ function renderMotionSettings() {
   $('#optSens').value = m.sensitivity;
   $('#optMotionEvery').value = String(m.intervalS);
   $('#optSound').checked = m.sound;
+  updateMotionStats();
 }
 
 function wireMotion() {
