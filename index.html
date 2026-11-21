@@ -119,6 +119,12 @@
       <p class="muted">The page checks every camera and pops one up only when a person, vehicle or animal moves. Grass, leaves, shadows and lighting changes are ignored. Starred key cameras take over the full screen with a sound. This runs only while the page is open and changes nothing on the server.</p>
       <div class="row-fields">
         <label class="check"><input type="checkbox" id="optMotionOn"> Motion pop-ups on</label>
+        <label>Watch
+          <select id="optScope">
+            <option value="key">Only starred key cameras</option>
+            <option value="all">All cameras with Motion ticked</option>
+          </select>
+        </label>
         <label>Sensitivity
           <select id="optSens">
             <option value="high">High (catches small or distant movement)</option>

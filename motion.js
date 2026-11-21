@@ -11,7 +11,7 @@
  * visibleCams, openSingle, closeSingle, single, handleError, saveConfig, $, $$. */
 'use strict';
 
-const MOTION_DEFAULTS = { enabled: true, sensitivity: 'normal', sound: true, intervalS: 3 };
+const MOTION_DEFAULTS = { enabled: true, sensitivity: 'normal', sound: true, intervalS: 3, scope: 'key' };
 const TARGETS = {
   person: 'Person', bicycle: 'Bicycle', motorcycle: 'Motorcycle', car: 'Car', truck: 'Truck',
   bus: 'Bus', dog: 'Dog', cat: 'Cat', horse: 'Horse', cow: 'Animal', sheep: 'Animal', bear: 'Animal',
@@ -72,6 +72,8 @@ async function loadModel() {
 
 function watchedCams() {
   mcfg();
+  const m = cfg.motion;
+  if (m.scope === 'key') return cams.map(c => c.id).filter(id => cfg.key[id]);
   return visibleCams().filter(id => !cfg.noMotion[id]);
 }
 
@@ -125,7 +127,8 @@ async function startMotion() {
       }
       updateMotionStats();
     }
-    const wait = mcfg().intervalS * 1000 - (Date.now() - started);
+    const few = watchedCams().length <= 8;
+    const wait = (few ? 1 : mcfg().intervalS) * 1000 - (Date.now() - started);
     await new Promise(r => setTimeout(r, Math.max(300, wait)));
   }
 }
@@ -284,7 +287,10 @@ function motionStatsText() {
 
 function updateMotionStats() {
   const el = $('#motionStats');
-  if (el) el.textContent = mcfg().enabled ? motionStatsText() : 'Motion pop-ups are paused.';
+  const n = watchedCams().length;
+  if (el) el.textContent = !mcfg().enabled ? 'Motion pop-ups are paused.'
+    : !n ? 'No cameras are being watched. Star a camera below (★ Key) to watch it.'
+    : `Watching ${n} camera${n === 1 ? '' : 's'}` + (n <= 8 ? ', checking each one every second. ' : '. ') + motionStatsText();
   renderActivity();
   const b = $('#btnMotion');
   if (b && b.dataset.state === 'on') b.title = `Watching ${watchedCams().length} cameras. ${motionStatsText()} Click to pause.`;
@@ -453,6 +459,7 @@ function renderMotionSettings() {
   $('#optSens').value = m.sensitivity;
   $('#optMotionEvery').value = String(m.intervalS);
   $('#optSound').checked = m.sound;
+  $('#optScope').value = m.scope;
   updateMotionStats();
 }
 
@@ -462,6 +469,7 @@ function wireMotion() {
   $('#optSens').onchange = e => { mcfg().sensitivity = e.target.value; saveConfig(); };
   $('#optMotionEvery').onchange = e => { mcfg().intervalS = +e.target.value; saveConfig(); };
   $('#optSound').onchange = e => { mcfg().sound = e.target.checked; saveConfig(); };
+  $('#optScope').onchange = e => { mcfg().scope = e.target.value; saveConfig(); updateMotionStats(); };
   $('#btnTestAlert').onclick = () => { unlockAudio(); beep(); };
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   document.addEventListener('keydown', unlockAudio, { once: true });
