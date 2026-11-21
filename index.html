@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
 <link rel="stylesheet" href="style.css">
@@ -35,10 +38,11 @@
   <header class="bar">
     <nav id="groupTabs" class="tabs"></nav>
     <div class="bar-right">
-      <button id="btnMotion" class="toggle">○ Motion</button>
-      <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳ Rotate</button>
+      <button id="btnMotion" class="toggle">○<span class="lbl"> Motion</span></button>
+      <button id="btnCols" title="Columns" hidden>▦</button>
+      <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳<span class="lbl"> Rotate</span></button>
       <button id="btnFull" title="Full screen (F)">⛶</button>
-      <button id="btnSetup" title="Set up cameras and groups">⚙ Setup</button>
+      <button id="btnSetup" title="Set up cameras and groups">⚙<span class="lbl"> Setup</span></button>
     </div>
   </header>
   <main id="grid" class="grid"></main>

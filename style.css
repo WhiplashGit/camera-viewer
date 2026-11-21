@@ -111,13 +111,6 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 .cam-row label { display: flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; }
 .cam-row.hidden-cam { opacity: .5; }
 
-@media (max-width: 640px) {
-  .bar { flex-wrap: wrap; }
-  .bar-right { margin-left: 0; width: 100%; justify-content: flex-end; }
-  .grid { --cols: 1 !important; overflow-y: auto; grid-auto-rows: auto; }
-  .grid .tile { aspect-ratio: 16 / 9; }
-  .cam-row { grid-template-columns: 72px 1fr; }
-  .cam-row img { width: 72px; height: 40px; }
 }
 .tile.offline { opacity: .45; }
 
@@ -144,4 +137,62 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
   border: 8px solid var(--alert); animation: alertPulse 1s ease-in-out infinite; }
 .single.alerting .badge { font-size: clamp(16px, 2vw, 26px); }
 @keyframes alertPulse { 50% { border-color: rgba(255,59,48,.25); } }
-@media (max-width: 640px) { .popups { width: calc(100vw - 24px); } }
+
+/* ---------- Phones and touch ---------- */
+html { -webkit-text-size-adjust: 100%; }
+body { overscroll-behavior: none; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bar { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right)); }
+.tabs { flex: 1; -webkit-overflow-scrolling: touch; }
+.grid { padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right));
+  padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+.grid.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; align-content: start; }
+.grid.scroll .tile { aspect-ratio: 4 / 3; }
+.grid.phone .tile img, .grid.phone .tile video { object-fit: cover; }
+.single-top { padding-top: max(10px, env(safe-area-inset-top)); padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right)); }
+.popups { bottom: max(12px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); }
+
+@media (hover: none) {
+  .tile { border-width: 2px; }
+  button:hover { border-color: var(--line); }
+}
+
+@media (max-width: 760px), (max-height: 500px) {
+  .bar { gap: 6px; padding-bottom: 6px; }
+  .bar .lbl { display: none; }
+  .bar-right { gap: 6px; }
+  .bar-right button { min-width: 40px; min-height: 38px; padding: 6px 10px; font-size: 17px; }
+  .tabs button { min-height: 38px; font-size: 14px; padding: 6px 12px; }
+  .tile-label { font-size: 13px; padding: 14px 8px 5px; }
+  .grid { gap: 3px; padding-top: 3px; }
+  .single-top button { min-width: 44px; min-height: 44px; }
+  .single-top #singlePrev, .single-top #singleNext { display: none; }
+  .single-name { font-size: 18px; }
+  .popups { width: min(250px, 62vw); gap: 6px; }
+  .popup-bar { font-size: 13px; padding: 4px 6px; }
+  .setup-body { padding: 10px; gap: 10px; }
+  .panel { padding: 12px; }
+  .row-fields { gap: 12px; }
+  .row-fields label { width: 100%; }
+  .row-fields label.check { width: auto; padding-bottom: 0; }
+  .row-fields select { width: 100%; }
+  input, select { font-size: 16px; }   /* stops iOS zooming into fields */
+  .cam-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cam-row img { width: 80px; height: 60px; }
+  .cam-row .names { flex: 1; min-width: 150px; }
+  .cam-row .flags { display: flex; gap: 14px; }
+  .cam-row > label, .cam-row .flags label { min-height: 32px; }
+  .cam-row .flags, .cam-row > label { margin-left: 88px; }
+  .cam-row > label { margin-left: 0; }
+  .group-head input.gname { min-width: 100%; }
+}
+
+.grid.scroll { grid-auto-rows: var(--rowH, 200px); }
+.grid.scroll .tile { aspect-ratio: auto; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .bar { flex-wrap: wrap; }
+  .bar-right { order: 1; margin-left: auto; }
+  .tabs { order: 2; flex-basis: 100%; }
+}

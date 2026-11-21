@@ -26,7 +26,7 @@ const PIXEL_DELTA = 28;                   // grey-level change that counts as "c
 const POPUP_HOLD_MS = 25000;              // keep a pop-up this long after the last detection
 const COOLDOWN_MS = 8000;                 // don't re-alert the same camera faster than this
 const KEY_HOLD_MS = 30000;                // full-screen alert length for key cameras
-const MAX_POPUPS = 4;
+const maxPopups = () => (Math.min(window.innerWidth, window.innerHeight) < 600 ? 2 : 4);
 
 let motionModel = null;
 let motionLoading = null;
@@ -191,7 +191,7 @@ function showPopup(id, label, hits, bitmap) {
   const box = $('#popups');
   let p = popups.get(id);
   if (!p) {
-    if (popups.size >= MAX_POPUPS) {
+    if (popups.size >= maxPopups()) {
       // Drop the oldest pop-up
       const [oldId] = popups.keys();
       dismissPopup(oldId);
@@ -304,7 +304,8 @@ function setMotionStatus(state) {
   if (!b) return;
   b.dataset.state = state;
   b.classList.toggle('on', state === 'on' || state === 'loading');
-  b.textContent = { on: '◉ Motion', loading: '◌ Motion…', error: '⚠ Motion', off: '○ Motion', idle: '○ Motion' }[state] || '○ Motion';
+  const icon = { on: '◉', loading: '◌', error: '⚠' }[state] || '○';
+  b.innerHTML = `${icon}<span class="lbl"> Motion</span>`;
   b.title = {
     on: `Watching ${watchedCams().length} cameras for people, vehicles and animals. Click to pause.`,
     loading: 'Loading the detector…',

@@ -279,10 +279,17 @@ function renderGrid() {
     return;
   }
   const n = g.cams.length;
-  const cols = g.cols || Math.min(n, Math.ceil(Math.sqrt(n * (window.innerWidth / window.innerHeight) * 9 / 16)));
-  const rows = Math.ceil(n / cols);
-  grid.style.setProperty('--cols', Math.max(1, cols));
-  grid.classList.toggle('scroll', rows > 8);
+  const { cols, scroll } = gridLayout(g);
+  grid.style.setProperty('--cols', cols);
+  grid.classList.toggle('scroll', scroll);
+  grid.classList.toggle('phone', isPhone());
+  // Scrolling grids get fixed 4:3 rows (aspect-ratio alone collapses inside a grid).
+  if (scroll) {
+    const gap = 4, w = grid.clientWidth - 8;
+    grid.style.setProperty('--rowH', Math.round(((w - gap * (cols - 1)) / cols) * 3 / 4) + 'px');
+  }
+  $('#btnCols').hidden = !isPhone() || n < 2;
+  $('#btnCols').title = `Columns: ${cols} (tap to change)`;
   const live = cfg.tileMode === 'live';
   const tpl = $('#tileTpl');
   g.cams.forEach((id, i) => {
@@ -299,17 +306,59 @@ function renderGrid() {
       if (h) { tileHls.push(h); t.classList.add('ok'); }
     }
     grid.appendChild(t);
+    tileObserver?.observe(t);
   });
   if (!live || !window.Hls || !Hls.isSupported()) runSnapshotLoop(grid, cols);
 }
 
+/* ---------- Layout ---------- */
+
+// Phones (and small tablets in portrait) get a scrolling grid with a column
+// count the viewer picks; bigger screens fit every tile on screen.
+function isPhone() {
+  return Math.min(window.innerWidth, window.innerHeight) < 600 || (window.innerWidth < 760 && window.innerHeight > window.innerWidth);
+}
+function isPortrait() { return window.innerHeight > window.innerWidth; }
+
+function phoneCols() {
+  const v = +store.get('cv.phoneCols');
+  return v >= 1 && v <= 3 ? v : 2;
+}
+
+function gridLayout(g) {
+  const n = g.cams.length;
+  if (isPhone()) {
+    if (isPortrait()) {
+      const cols = n === 1 ? 1 : Math.min(n, phoneCols());
+      return { cols, scroll: true };
+    }
+    // Phone on its side: fit up to 6 tiles on screen, scroll beyond that.
+    const cols = n <= 2 ? n : n <= 6 ? 3 : 4;
+    return { cols, scroll: n > 6 };
+  }
+  const fit = Math.min(n, Math.ceil(Math.sqrt(n * (window.innerWidth / window.innerHeight) * 3 / 4)));
+  const cols = Math.max(1, g.cols || fit);
+  return { cols, scroll: Math.ceil(n / cols) > 8 };
+}
+
+function cyclePhoneCols() {
+  store.set('cv.phoneCols', phoneCols() % 3 + 1);
+  renderGrid();
+}
+
+// Only refresh tiles that are on screen (matters when scrolling on a phone).
+const tileObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+  for (const e of entries) e.target._vis = e.isIntersecting;
+}, { rootMargin: '200px 0px' }) : null;
+
 async function runSnapshotLoop(grid, cols) {
   const gen = ++refreshGen;
-  const big = cols <= 2;
-  const [w, h] = big ? [960, 540] : cols <= 4 ? [640, 360] : [384, 216];
+  // Ask the server for roughly the size the tile is drawn at.
+  const tileW = (grid.clientWidth / cols) * Math.min(2, window.devicePixelRatio || 1);
+  const [w, h] = tileW > 700 ? [960, 720] : tileW > 400 ? [640, 480] : [400, 300];
   while (gen === refreshGen) {
     if (document.hidden || single) { await sleep(500); continue; }
-    const tiles = $$('.tile', grid).filter(t => $('img', t));
+    const tiles = $$('.tile', grid).filter(t => $('img', t) && t._vis !== false);
     const started = Date.now();
     let next = 0;
     const worker = async () => {
@@ -658,6 +707,9 @@ function wire() {
 
   $('#btnRotate').onclick = () => setRotating(!cfg.rotating);
   $('#btnFull').onclick = toggleFullscreen;
+  $('#btnFull').hidden = !(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  $('#btnCols').onclick = cyclePhoneCols;
+  wireSwipe();
   $('#btnSetup').onclick = openSetup;
   $('#btnDone').onclick = closeSetup;
   $('#singleClose').onclick = userCloseSingle;
@@ -702,6 +754,7 @@ function wire() {
     else if (/^[1-9]$/.test(e.key) && gs[+e.key - 1]) { selectGroup(gs[+e.key - 1].id); restartRotation(); }
   });
 
+  window.addEventListener('orientationchange', () => setTimeout(() => { if (!$('#viewer').hidden && !single) renderGrid(); }, 300));
   let resizeT;
   window.addEventListener('resize', () => {
     clearTimeout(resizeT);
@@ -709,9 +762,26 @@ function wire() {
   });
 }
 
+// Swipe left/right on the full-screen camera to change camera, down to close.
+function wireSwipe() {
+  const el = $('#single');
+  let x0 = 0, y0 = 0, t0 = 0;
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (e.target.closest('button') || Date.now() - t0 > 800) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) userStep(dx < 0 ? 1 : -1);
+    else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) userCloseSingle();
+  }, { passive: true });
+}
+
 function toggleFullscreen() {
-  if (document.fullscreenElement) document.exitFullscreen?.();
-  else document.documentElement.requestFullscreen?.().catch(() => {});
+  const d = document, el = d.documentElement;
+  if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen)?.call(d);
+  else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {});
 }
 
 wire();
