@@ -1,8 +1,0 @@
-<!doctype html><meta charset="utf-8"><title>Relay probe</title>
-<pre id="o">probing…</pre>
-<script>
-(async()=>{const base='https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';const out={};
-for(const [k,u,opt] of [['simple',base+'/api/moduleInformation',{}],['auth',base+'/rest/v2/devices',{headers:{Authorization:'Bearer invalid'}}]]){
-try{const r=await fetch(u,opt);out[k]=r.status+' '+(await r.text()).slice(0,120);}catch(e){out[k]='ERR '+e.message;}}
-document.getElementById('o').textContent=JSON.stringify(out,null,1);})();
-</script>

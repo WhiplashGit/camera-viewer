@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d10">
+<title>Shop Cameras</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+</head>
+<body>
+
+<!-- Sign in -->
+<section id="login" class="screen" hidden>
+  <form id="loginForm" class="card">
+    <h1>Shop Cameras</h1>
+    <p class="muted">Sign in to your Wave system. Only a session token is kept on this device, never your password.</p>
+    <label>Server address
+      <input id="lgBase" type="url" required autocomplete="url">
+    </label>
+    <label>Username
+      <input id="lgUser" required autocomplete="username" autocapitalize="off">
+    </label>
+    <label>Password
+      <input id="lgPass" type="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="primary">Sign in</button>
+    <p id="lgErr" class="error" hidden></p>
+  </form>
+</section>
+
+<!-- Viewer -->
+<section id="viewer" class="screen" hidden>
+  <header class="bar">
+    <nav id="groupTabs" class="tabs"></nav>
+    <div class="bar-right">
+      <button id="btnRotate" class="toggle" title="Rotate through groups (R)">⟳ Rotate</button>
+      <button id="btnFull" title="Full screen (F)">⛶</button>
+      <button id="btnSetup" title="Set up cameras and groups">⚙ Setup</button>
+    </div>
+  </header>
+  <main id="grid" class="grid"></main>
+  <div id="status" class="status" hidden></div>
+</section>
+
+<!-- Single camera -->
+<div id="single" class="single" hidden>
+  <video id="singleVideo" playsinline muted autoplay></video>
+  <img id="singleImg" alt="" hidden>
+  <div class="single-top">
+    <span id="singleName" class="single-name"></span>
+    <span id="singleBadge" class="badge" hidden></span>
+    <span class="spacer"></span>
+    <button id="singlePrev" title="Previous (←)">‹</button>
+    <button id="singleNext" title="Next (→)">›</button>
+    <button id="singleClose" title="Close (Esc)">✕</button>
+  </div>
+</div>
+
+<!-- Setup -->
+<section id="setup" class="screen" hidden>
+  <header class="bar">
+    <h2>Setup</h2>
+    <div class="bar-right">
+      <button id="btnDone" class="primary">Done</button>
+    </div>
+  </header>
+  <div class="setup-body">
+    <div class="panel">
+      <h3>Groups</h3>
+      <p class="muted">Each group is one grid. "All cameras" always shows every camera that isn't hidden.</p>
+      <div id="groupList"></div>
+      <button id="btnAddGroup">+ Add group</button>
+    </div>
+
+    <div class="panel">
+      <h3>Display</h3>
+      <div class="row-fields">
+        <label>Refresh grid every
+          <select id="optRefresh">
+            <option value="1">1 second</option>
+            <option value="2">2 seconds</option>
+            <option value="3">3 seconds</option>
+            <option value="5">5 seconds</option>
+            <option value="10">10 seconds</option>
+          </select>
+        </label>
+        <label>Rotate groups every
+          <select id="optRotate">
+            <option value="10">10 seconds</option>
+            <option value="15">15 seconds</option>
+            <option value="30">30 seconds</option>
+            <option value="60">1 minute</option>
+            <option value="120">2 minutes</option>
+          </select>
+        </label>
+        <label>Grid tiles show
+          <select id="optTileMode">
+            <option value="snap">Snapshots (lightest)</option>
+            <option value="live">Live video (heavier)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Cameras</h3>
+      <p class="muted">Rename a camera, hide it, or star it as a key camera (front gate, front door) for the bigger alert.</p>
+      <input id="camFilter" class="filter" placeholder="Filter cameras…" type="search">
+      <div id="camTable" class="cam-table"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Settings storage</h3>
+      <p class="muted">Settings save on this device automatically. Save them to the camera server to use the same setup on every laptop, phone and TV.</p>
+      <div class="row-btns">
+        <button id="btnSaveServer">Save to server</button>
+        <button id="btnLoadServer">Load from server</button>
+        <span id="syncMsg" class="muted"></span>
+      </div>
+      <h3 class="mt">Account</h3>
+      <div class="row-btns">
+        <span id="whoami" class="muted"></span>
+        <button id="btnLogout" class="danger">Sign out</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<template id="tileTpl">
+  <div class="tile">
+    <img class="tile-img" alt="">
+    <div class="tile-label"><span class="tile-name"></span><span class="tile-dot"></span></div>
+  </div>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
