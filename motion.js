@@ -17,9 +17,9 @@ const TARGETS = {
   bus: 'Bus', dog: 'Dog', cat: 'Cat', horse: 'Horse', cow: 'Animal', sheep: 'Animal', bear: 'Animal',
 };
 const SENS = {               // fraction of the picture that must change, detector min score
-  high: { change: 0.0008, score: 0.42 },
-  normal: { change: 0.0015, score: 0.52 },
-  low: { change: 0.004, score: 0.62 },
+  high: { change: 0.0008, score: 0.35 },
+  normal: { change: 0.0015, score: 0.45 },
+  low: { change: 0.004, score: 0.55 },
 };
 const DIFF_W = 64, DIFF_H = 36;           // motion grid
 const PIXEL_DELTA = 18;                   // grey-level change from the background that counts as "changed"
@@ -219,6 +219,12 @@ async function diffCamera(id) {
   return { id, changed, score, routine: score < sens.change || lighting };
 }
 
+function near(a, b) {
+  const ax = a[0] + a[2] / 2, ay = a[1] + a[3] / 2, bx = b[0] + b[2] / 2, by = b[1] + b[3] / 2;
+  const size = Math.max(a[2], a[3], b[2], b[3]);
+  return Math.hypot(ax - bx, ay - by) <= Math.max(4 * size, 80);
+}
+
 function iou(a, b) {
   const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
   const x2 = Math.min(a[0] + a[2], b[0] + b[2]), y2 = Math.min(a[1] + a[3], b[1] + b[3]);
@@ -257,7 +263,10 @@ async function detectCamera({ id, routine }) {
     const box = d.bbox;
     const norm = [box[0] / W, box[1] / H, box[2] / W, box[3] / H];
     if (ignored.some(s => s.label === label && iou(s.box, norm) > 0.3)) continue;   // marked "not real" by you
-    if (pending.some(p => p.label === label && iou(p.bbox, box) > 0.15)) {
+    // Confirmed if the same kind of object was "possible" on the last check
+    // anywhere nearby. A walking person can move more than their own width
+    // between checks, so this compares distance, not overlap.
+    if (pending.some(p => p.label === label && near(p.bbox, box))) {
       hits.push({ label, score: d.score, bbox: box, norm });
       continue;
     }
@@ -544,7 +553,45 @@ function renderMotionSettings() {
   updateMotionStats();
 }
 
+async function aiTest() {
+  const id = $('#aiTestCam').value;
+  const msg = $('#aiTestMsg');
+  if (!id) return;
+  msg.textContent = 'Loading the AI…';
+  try {
+    await loadModel();
+    msg.textContent = 'Checking…';
+    const img = await snapBitmap(id, 1280, 720);
+    const dets = await motionModel.detect(img, 20, 0.2);
+    const cv = $('#aiTestCanvas');
+    cv.width = img.width; cv.height = img.height; cv.hidden = false;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0); img.close?.();
+    ctx.lineWidth = 3; ctx.font = 'bold 22px sans-serif';
+    for (const d of dets) {
+      const [x, y, w, h] = d.bbox;
+      const target = !!TARGETS[d.class];
+      ctx.strokeStyle = ctx.fillStyle = target ? '#ffcc00' : '#8b97a3';
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillText(`${d.class} ${Math.round(d.score * 100)}%`, x + 4, Math.max(22, y - 6));
+    }
+    const people = dets.filter(d => TARGETS[d.class]).map(d => `${TARGETS[d.class]} ${Math.round(d.score * 100)}%`);
+    msg.textContent = people.length ? 'Found: ' + people.join(', ') : `No person, vehicle or animal found (${dets.length} other object${dets.length === 1 ? '' : 's'}).`;
+  } catch (e) { if (!handleError(e)) msg.textContent = 'Could not check: ' + e.message; }
+}
+
+function fillAiTestCams() {
+  const sel = $('#aiTestCam');
+  const keep = sel.value;
+  sel.textContent = '';
+  const ids = [...cams.map(c => c.id).filter(id => cfg.key[id]), ...cams.map(c => c.id).filter(id => !cfg.key[id])];
+  for (const id of ids) { const o = document.createElement('option'); o.value = id; o.textContent = (cfg.key[id] ? '★ ' : '') + displayName(id); sel.appendChild(o); }
+  if (keep) sel.value = keep;
+}
+
 function wireMotion() {
+  $('#aiTestBtn').onclick = aiTest;
+  $('#aiTest').addEventListener('toggle', fillAiTestCams);
   $('#btnMotion').onclick = toggleMotion;
   $('#optMotionOn').onchange = e => { mcfg().enabled = e.target.checked; saveConfig(); };
   $('#optSens').onchange = e => { mcfg().sensitivity = e.target.value; saveConfig(); };

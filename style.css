@@ -205,3 +205,5 @@ summary { cursor: pointer; font-weight: 600; }
 .popup-time { color: var(--muted); font-size: 12px; white-space: nowrap; font-weight: 500; }
 .popups-clear { pointer-events: auto; align-self: flex-end; background: rgba(0,0,0,.8); }
 .popup-ignore { padding: 2px 8px; font-size: 12px; }
+.ai-canvas { display: block; width: 100%; height: auto; margin-top: 10px; border-radius: 8px; background: #000; }
+#aiTest select { flex: 1; min-width: 180px; }

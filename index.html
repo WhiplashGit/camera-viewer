@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121194211">
+<link rel="stylesheet" href="style.css?v=20261121200740">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -145,6 +145,11 @@
         <button id="btnTestAlert" type="button">Test sound</button>
       </div>
       <p id="motionStats" class="muted mt"></p>
+      <details class="mt" id="aiTest"><summary>See what the AI sees</summary>
+        <p class="muted">Pick a camera, stand or walk in view, and press Check. Every object the AI notices is boxed with how sure it is. Pop-ups need about 45% or more on Normal.</p>
+        <div class="row-btns"><select id="aiTestCam"></select><button id="aiTestBtn" type="button">Check</button><span id="aiTestMsg" class="muted"></span></div>
+        <canvas id="aiTestCanvas" class="ai-canvas" hidden></canvas>
+      </details>
       <div class="row-btns"><button id="btnClearIgnored" type="button">Clear "Not real" spots</button><span id="ignoredMsg" class="muted"></span></div>
       <details class="mt"><summary>Recent activity</summary><div id="motionLog" class="motion-log"></div></details>
     </div>
@@ -180,7 +185,7 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121194211"></script>
-<script src="motion.js?v=20261121194211"></script>
+<script src="app.js?v=20261121200740"></script>
+<script src="motion.js?v=20261121200740"></script>
 </body>
 </html>
