@@ -70,8 +70,11 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 
 /* Single camera */
 .single { position: fixed; inset: 0; background: #000; z-index: 20; }
-.single video, .single img { width: 100%; height: 100%; object-fit: contain; }
-.single-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px;
+.single video, .single img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.single img { z-index: 1; }
+.single video { z-index: 2; opacity: 0; }
+.single video.show { opacity: 1; }
+.single-top { z-index: 3; position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; background: linear-gradient(rgba(0,0,0,.7), transparent); }
 .single-name { font-size: clamp(16px, 2.2vw, 30px); font-weight: 700; }
 .spacer { flex: 1; }

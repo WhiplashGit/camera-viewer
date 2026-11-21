@@ -335,46 +335,124 @@ async function runSnapshotLoop(grid, cols) {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-/* ---------- Single camera ---------- */
+/* ---------- Single camera ----------
+ * Two <video> elements take turns. While one camera shows, the next camera in
+ * the rotation starts loading hidden in the other, so switching is instant.
+ * A snapshot (which arrives in ~0.1s) covers any gap until live video plays. */
+
+let preload = null;       // player warming up for the next camera
+let singleImgUrl = '';
+
+function singleVideos() { return $$('#single video'); }
+
+function startPlayer(video, id) {
+  video.classList.remove('show');
+  const p = { video, id, playing: false, hls: null };
+  p.onPlaying = () => {
+    p.playing = true;
+    if (single?.cur === p) showPlayer(p);
+  };
+  video.addEventListener('playing', p.onPlaying);
+  p.hls = attachHls(video, id, 'hi');
+  return p;
+}
+
+function stopPlayer(p) {
+  if (!p) return;
+  p.video.removeEventListener('playing', p.onPlaying);
+  if (p.hls) p.hls.destroy();
+  p.video.classList.remove('show');
+  p.video.removeAttribute('src');
+  p.video.load();
+}
+
+function showPlayer(p) {
+  for (const v of singleVideos()) v.classList.toggle('show', v === p.video);
+  $('#singleImg').hidden = true;
+  schedulePreload();
+}
+
+function setSingleImg(url) {
+  const img = $('#singleImg');
+  img.src = url; img.hidden = false;
+  if (singleImgUrl) URL.revokeObjectURL(singleImgUrl);
+  singleImgUrl = url;
+}
 
 function openSingle(group, index, opts = {}) {
-  closeSingle(true);
   const id = group.cams[index];
   if (!id) return;
-  const el = $('#single');
-  el.hidden = false;
+  $('#single').hidden = false;
   $('#singleName').textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
   const badge = $('#singleBadge');
   badge.hidden = !opts.badge; badge.textContent = opts.badge || '';
-  const video = $('#singleVideo'), img = $('#singleImg');
-  single = { group, index, hls: attachHls(video, id, 'hi'), snapTimer: null, id };
-  if (single.hls) {
-    video.hidden = false; img.hidden = true;
-  } else {
+
+  const old = single ? single.cur : null;
+  if (single) { clearTimeout(single.snapTimer); clearTimeout(single.preloadTimer); }
+
+  let cur;
+  if (preload && preload.id === id) { cur = preload; preload = null; }
+  else {
+    stopPlayer(preload); preload = null;
+    const free = singleVideos().find(v => !old || v !== old.video);
+    cur = startPlayer(free, id);
+  }
+  single = { group, index, id, cur, snapTimer: null, preloadTimer: null };
+
+  if (!cur.hls) {
     // No hls.js support: fall back to fast snapshots
-    video.hidden = true; img.hidden = false;
+    if (old !== cur) stopPlayer(old);
     const tick = async () => {
       if (!single || single.id !== id) return;
-      try {
-        const url = await fetchSnapshot(id, 1280, 720);
-        const old = img.src; img.src = url;
-        if (old.startsWith('blob:')) URL.revokeObjectURL(old);
-      } catch (e) { if (handleError(e)) return; }
-      single.snapTimer = setTimeout(tick, 1000);
+      try { setSingleImg(await fetchSnapshot(id, 1280, 720)); }
+      catch (e) { if (handleError(e)) return; }
+      if (single && single.id === id) single.snapTimer = setTimeout(tick, 1000);
     };
     tick();
+    return;
   }
+
+  if (cur.playing) {          // preloaded and already live: swap instantly
+    showPlayer(cur);
+    if (old !== cur) stopPlayer(old);
+    return;
+  }
+  // Keep the previous picture up until this camera's snapshot arrives,
+  // then show the snapshot until live video starts.
+  fetchSnapshot(id, 1280, 720).then(url => {
+    if (!single || single.cur !== cur || cur.playing) { URL.revokeObjectURL(url); return; }
+    setSingleImg(url);
+    for (const v of singleVideos()) if (v !== cur.video) v.classList.remove('show');
+    if (old !== cur) stopPlayer(old);
+  }).catch(e => { handleError(e); if (old !== cur) stopPlayer(old); });
 }
 
-function closeSingle(keepOpen) {
+function schedulePreload() {
+  if (!single || !cfg.rotating) return;
+  clearTimeout(single.preloadTimer);
+  const { group, index } = single;
+  const n = group.cams.length;
+  if (n < 2) return;
+  const nextId = group.cams[(index + 1) % n];
+  // Start loading the next camera ~8 seconds before it is due.
+  const delay = Math.max(0, cfg.rotateS * 1000 - 8000);
+  single.preloadTimer = setTimeout(() => {
+    if (!single || !cfg.rotating || (preload && preload.id === nextId)) return;
+    stopPlayer(preload);
+    const free = singleVideos().find(v => v !== single.cur.video);
+    preload = startPlayer(free, nextId);
+  }, delay);
+}
+
+function closeSingle() {
   if (single) {
-    single.hls?.destroy();
-    clearTimeout(single.snapTimer);
+    clearTimeout(single.snapTimer); clearTimeout(single.preloadTimer);
+    stopPlayer(single.cur);
     single = null;
   }
-  const v = $('#singleVideo');
-  v.removeAttribute('src'); v.load();
-  if (!keepOpen) $('#single').hidden = true;
+  stopPlayer(preload); preload = null;
+  $('#singleImg').hidden = true;
+  $('#single').hidden = true;
 }
 
 function userStep(d) { stepSingle(d); restartRotation(); }
