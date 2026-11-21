@@ -31,7 +31,7 @@ const MAX_DETECT_PER_PASS = 4;           // AI checks per pass, most "new" movem
 const NOISE_ALPHA = 0.04;                 // how fast a cell learns it is noisy (~25 passes)
 const NOISY = 0.35;                       // cells changing this often are treated as background
 const LOG_MAX = 40;                 // don't re-alert the same camera faster than this
-const KEY_HOLD_MS = 30000;                // full-screen alert length for key cameras
+const KEY_HOLD_MS = 5 * 60 * 1000;       // key-camera full-screen alert stays until dismissed (✕ / Esc), or 5 minutes after the last detection
 const maxPopups = () => (Math.min(window.innerWidth, window.innerHeight) < 600 ? 2 : 4);
 
 let motionModel = null;
