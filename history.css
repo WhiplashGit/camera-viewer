@@ -1,0 +1,35 @@
+body { min-height: 100%; }
+.bar select { padding: 6px 8px; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.live-dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(52,199,89,.25); }
+.h-list { padding: 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+.h-day { margin: 18px 4px 8px; font-size: 15px; color: var(--muted); font-weight: 600; }
+.h-day:first-child { margin-top: 4px; }
+.h-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.h-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; }
+.h-card:hover { border-color: var(--accent); }
+.h-card.key { border-color: rgba(255,59,48,.6); }
+.h-card.new { animation: hNew 2s ease-out; }
+@keyframes hNew { from { box-shadow: 0 0 0 4px var(--warn); } to { box-shadow: none; } }
+.h-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #000; }
+.h-meta { display: flex; gap: 8px; align-items: baseline; padding: 7px 9px; font-size: 14px; }
+.h-cam { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-label { color: var(--warn); white-space: nowrap; }
+.h-time { margin-left: auto; color: var(--muted); white-space: nowrap; font-size: 13px; }
+.h-more { text-align: center; padding: 18px; }
+.h-empty { text-align: center; color: var(--muted); padding: 60px 16px; line-height: 1.6; }
+
+.h-modal { position: fixed; inset: 0; z-index: 40; background: #000; display: flex; flex-direction: column; }
+.h-modal-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
+.h-title { font-weight: 700; font-size: clamp(15px, 1.8vw, 22px); }
+.h-modal-body { position: relative; flex: 1; min-height: 0; }
+.h-modal-body img, .h-modal-body video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.h-msg { padding: 8px 12px; padding-bottom: max(8px, env(safe-area-inset-bottom)); min-height: 1.4em; }
+@media (max-width: 640px) {
+  .bar { flex-wrap: wrap; }
+  .bar-right { width: 100%; }
+  .bar-right select { flex: 1; min-width: 0; }
+  .h-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .h-meta { flex-wrap: wrap; gap: 2px 6px; font-size: 13px; }
+  .h-time { margin-left: 0; width: 100%; }
+}

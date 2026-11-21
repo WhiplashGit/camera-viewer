@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121211150">
+<link rel="stylesheet" href="style.css?v=20261121220741">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -42,6 +42,7 @@
       <button id="btnCols" title="Columns" hidden>▦</button>
       <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳<span class="lbl"> Rotate</span></button>
       <button id="btnFull" title="Full screen (F)">⛶</button>
+      <button id="btnHistory" title="Motion history (opens a new tab)">🕘<span class="lbl"> History</span></button>
       <button id="btnSetup" title="Set up cameras and groups">⚙<span class="lbl"> Setup</span></button>
     </div>
   </header>
@@ -172,6 +173,17 @@
         </label>
         <label class="check"><input type="checkbox" id="optSound"> Sound for key cameras</label>
         <button id="btnTestAlert" type="button">Test sound</button>
+        <label class="check"><input type="checkbox" id="optNotify"> Desktop notifications when this tab isn't in front</label>
+        <span id="notifyMsg" class="muted"></span>
+      </div>
+      <h3 class="mt">Your sounds</h3>
+      <p class="muted">Upload your own alert sounds (MP3, M4A or WAV, up to 3 MB), then pick one for any camera in the list below. Uploaded sounds are kept in this browser, so add them on each device you use.</p>
+      <div class="row-btns">
+        <label class="upload-btn"><input type="file" id="soundFile" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg" hidden>⬆ Upload a sound</label>
+        <span id="soundMsg" class="muted"></span>
+      </div>
+      <div id="customSounds" class="group-cams"></div>
+      <div>
       </div>
       <p id="motionStats" class="muted mt"></p>
       <details class="mt" id="aiTest"><summary>See what the AI sees</summary>
@@ -185,7 +197,7 @@
 
     <div class="panel">
       <h3>Cameras</h3>
-      <p class="muted">Rename a camera, hide it, star it as a key camera (front gate, front door) for the bigger alert, or untick Motion to never get pop-ups from it.</p>
+      <p class="muted">Pick a sound for each camera, rename it, hide it, star it as a key camera (front gate, front door) for the bigger alert, or untick Motion to never get pop-ups from it.</p>
       <input id="camFilter" class="filter" placeholder="Filter cameras…" type="search">
       <div id="camTable" class="cam-table"></div>
     </div>
@@ -214,9 +226,10 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121211150"></script>
-<script src="motion.js?v=20261121211150"></script>
-<script src="power.js?v=20261121211150"></script>
-<script src="zones.js?v=20261121211150"></script>
+<script src="app.js?v=20261121220741"></script>
+<script src="history-db.js?v=20261121220741"></script>
+<script src="motion.js?v=20261121220741"></script>
+<script src="power.js?v=20261121220741"></script>
+<script src="zones.js?v=20261121220741"></script>
 </body>
 </html>

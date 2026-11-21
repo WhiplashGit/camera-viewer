@@ -94,7 +94,8 @@ async function startMotion() {
   setMotionStatus('on');
   while (gen === motionGen && session) {
     const started = Date.now();
-    if (!document.hidden) {
+    // Keep watching even when this tab is in the background (the browser may slow it down).
+    {
       // Pass 1 (cheap): small snapshot of every camera, compared with the last one.
       const ids = watchedCams();
       const candidates = [];
@@ -130,6 +131,7 @@ async function startMotion() {
         catch (e) { if (handleError(e)) { motionGen++; break; } console.error(e); }
       }
       updateMotionStats();
+      if (typeof HistoryDB !== 'undefined') HistoryDB.channel?.postMessage({ type: 'alive' });
     }
     const few = watchedCams().length <= 8;
     const wait = (few ? 1 : mcfg().intervalS) * 1000 - (Date.now() - started);
@@ -374,8 +376,36 @@ function onDetection(id, hits, bitmap) {
   const fresh = !st.lastAlert || now - st.lastAlert > COOLDOWN_MS;
   st.lastAlert = now;
   markTileMotion(id);
+  if (fresh && mcfg().sound) playSound(soundFor(id));
+  if (fresh) notifyDesktop(id, label);
   if (cfg.key[id]) keyCameraAlert(id, label, fresh);
   showPopup(id, label, hits, bitmap);
+}
+
+/* Desktop notification when the page isn't in front. Clicking it opens the
+ * motion history tab (or brings it forward if it's already open). */
+function notifyDesktop(id, label) {
+  if (!mcfg().notify || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!document.hidden && document.hasFocus()) return;
+  try {
+    const n = new Notification(`${displayName(id)}: ${label}`, {
+      body: 'Click to open motion history', tag: 'cv-' + id, renotify: true, requireInteraction: !!cfg.key[id],
+    });
+    n.onclick = () => { openHistoryWindow(); n.close(); };
+  } catch {}
+}
+
+/* Save each pop-up to the motion history (at most every 10 s per camera). */
+const lastSaved = new Map();
+function saveHistory(id, label, canvas) {
+  if (typeof HistoryDB === 'undefined') return;
+  const now = Date.now();
+  if (now - (lastSaved.get(id) || 0) < 10000) return;
+  lastSaved.set(id, now);
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    HistoryDB.add({ t: now, cam: id, name: displayName(id), label, key: !!cfg.key[id], img: blob }).catch(e => console.error(e));
+  }, 'image/jpeg', 0.75);
 }
 
 function markTileMotion(id) {
@@ -430,6 +460,7 @@ function showPopup(id, label, hits, bitmap) {
     ctx.strokeStyle = '#ffcc00'; ctx.strokeRect(x, y, w, hh);
     ctx.fillStyle = '#ffcc00'; ctx.fillText(h.label, x + 4, Math.max(18, y - 4));
   }
+  saveHistory(id, label, p.canvas);
   p.el.classList.remove('flash'); void p.el.offsetWidth; p.el.classList.add('flash');
   clearTimeout(p.timer);
   p.timer = setTimeout(() => dismissPopup(id), POPUP_HOLD_MS);
@@ -472,7 +503,6 @@ function keyCameraAlert(id, label, fresh) {
   openSingle({ id: 'alert', name: displayName(id), cams: [id] }, 0, { badge: '⚠ ' + label });
   $('#single').classList.add('alerting');
   $('#singleIgnore').hidden = false;
-  if (fresh && mcfg().sound) beep();
   scheduleKeyAlertEnd();
 }
 
@@ -506,20 +536,112 @@ function unlockAudio() {
   try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
 }
 
-function beep() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-  const t = audioCtx.currentTime;
-  for (let i = 0; i < 3; i++) {
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = 'square'; o.frequency.value = 880;
-    g.gain.setValueAtTime(0.0001, t + i * 0.3);
-    g.gain.exponentialRampToValueAtTime(0.25, t + i * 0.3 + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.3 + 0.2);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(t + i * 0.3); o.stop(t + i * 0.3 + 0.22);
+/* Sounds are made in the browser, so nothing needs downloading. */
+const SOUNDS = {
+  none: { name: 'No sound', notes: [] },
+  chime: { name: 'Soft chime (FYI)', notes: [[660, 0, 0.5, 'sine', 0.18], [880, 0.18, 0.7, 'sine', 0.14]] },
+  ding: { name: 'Single ding', notes: [[1320, 0, 0.9, 'triangle', 0.22]] },
+  doorbell: { name: 'Doorbell', notes: [[784, 0, 0.9, 'sine', 0.3], [622, 0.55, 1.2, 'sine', 0.3]] },
+  urgent: { name: 'Urgent beeps', notes: [0, 1, 2].map(i => [880, i * 0.3, 0.2, 'square', 0.25]) },
+  alarm: { name: 'Alarm (very urgent)', notes: [0, 1, 2, 3, 4, 5].map(i => [i % 2 ? 660 : 990, i * 0.22, 0.2, 'sawtooth', 0.22]) },
+};
+
+/* Sounds you upload are kept in this browser (IndexedDB) as 'custom:<id>'. */
+const customSounds = new Map();   // key -> {id, name, blob, buffer}
+
+async function loadCustomSounds() {
+  if (typeof HistoryDB === 'undefined') return;
+  try {
+    for (const s of await HistoryDB.soundsAll()) customSounds.set('custom:' + s.id, s);
+  } catch (e) { console.error(e); }
+}
+
+function soundChoices() {
+  const out = Object.entries(SOUNDS).map(([k, v]) => [k, v.name]);
+  for (const [k, s] of customSounds) out.push([k, s.name + ' (yours)']);
+  return out;
+}
+
+function soundFor(id) {
+  const s = cfg.sounds && cfg.sounds[id];
+  if (s && (SOUNDS[s] || customSounds.has(s))) return s;
+  return cfg.key[id] ? 'urgent' : 'none';
+}
+
+async function playCustom(key) {
+  const s = customSounds.get(key);
+  if (!s || !audioCtx) return;
+  try {
+    if (!s.buffer) s.buffer = await audioCtx.decodeAudioData(await s.blob.arrayBuffer());
+    const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+    g.gain.value = 0.9;
+    src.buffer = s.buffer;
+    src.connect(g).connect(audioCtx.destination);
+    src.start();
+    src.stop(audioCtx.currentTime + Math.min(s.buffer.duration, 15));   // never longer than 15 s
+  } catch (e) { console.error('Could not play sound', e); }
+}
+
+async function addCustomSound(file) {
+  if (file.size > 3 * 1024 * 1024) throw new Error('That file is over 3 MB. Please use a shorter sound.');
+  unlockAudio();
+  // Make sure the browser can actually play it before saving.
+  await audioCtx.decodeAudioData(await file.arrayBuffer());
+  const id = Date.now().toString(36);
+  const name = file.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'My sound';
+  const s = { id, name, blob: file };
+  await HistoryDB.soundPut(s);
+  customSounds.set('custom:' + id, s);
+  return 'custom:' + id;
+}
+
+async function removeCustomSound(key) {
+  const s = customSounds.get(key);
+  if (!s) return;
+  await HistoryDB.soundDel(s.id);
+  customSounds.delete(key);
+  for (const [cam, v] of Object.entries(cfg.sounds || {})) if (v === key) delete cfg.sounds[cam];
+  saveConfig();
+}
+
+function renderCustomSounds() {
+  const box = $('#customSounds');
+  if (!box) return;
+  box.textContent = '';
+  if (!customSounds.size) { box.innerHTML = '<span class="muted">None yet.</span>'; return; }
+  for (const [key, s] of customSounds) {
+    const row = document.createElement('span');
+    row.className = 'chip';
+    const n = document.createElement('span'); n.textContent = '♪ ' + s.name;
+    const play = document.createElement('button'); play.textContent = '▶'; play.title = 'Play';
+    play.onclick = () => playSound(key);
+    const del = document.createElement('button'); del.textContent = '✕'; del.title = 'Delete this sound';
+    del.onclick = async () => { await removeCustomSound(key); renderCustomSounds(); renderCamTable(); };
+    row.append(n, play, del);
+    box.appendChild(row);
   }
 }
+
+function playSound(name) {
+  if (name && name.startsWith('custom:')) { unlockAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {}); playCustom(name); return; }
+  const snd = SOUNDS[name];
+  if (!snd || !snd.notes.length) return;
+  unlockAudio();
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  const t = audioCtx.currentTime + 0.02;
+  for (const [freq, at, len, type, vol] of snd.notes) {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(vol, t + at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + len);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t + at); o.stop(t + at + len + 0.05);
+  }
+}
+
+function beep() { playSound('urgent'); }
 
 /* ---------- UI ---------- */
 
@@ -553,6 +675,8 @@ function renderMotionSettings() {
   $('#optSens').value = m.sensitivity;
   $('#optMotionEvery').value = String(m.intervalS);
   $('#optSound').checked = m.sound;
+  renderCustomSounds();
+  $('#optNotify').checked = !!m.notify && 'Notification' in window && Notification.permission === 'granted';
   $('#optScope').value = m.scope;
   updateMotionStats();
 }
@@ -593,7 +717,24 @@ function fillAiTestCams() {
   if (keep) sel.value = keep;
 }
 
+function alertMsg(t) { const el = $('#notifyMsg'); if (el) el.textContent = t; }
+
 function wireMotion() {
+  loadCustomSounds();
+  $('#soundFile').onchange = async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const msg = $('#soundMsg');
+    msg.textContent = 'Adding…';
+    try {
+      const key = await addCustomSound(f);
+      msg.textContent = `Added. Pick it for a camera below.`;
+      renderCustomSounds(); renderCamTable(); playSound(key);
+    } catch (err) {
+      msg.textContent = /decode|Unable|EncodingError/i.test(err.message + err.name) ? 'This browser can’t play that file. Try an MP3, M4A or WAV.' : err.message;
+    }
+  };
   $('#aiTestBtn').onclick = aiTest;
   $('#aiTest').addEventListener('toggle', fillAiTestCams);
   $('#btnMotion').onclick = toggleMotion;
@@ -603,6 +744,14 @@ function wireMotion() {
   $('#optSound').onchange = e => { mcfg().sound = e.target.checked; saveConfig(); };
   $('#optScope').onchange = e => { mcfg().scope = e.target.value; saveConfig(); updateMotionStats(); };
   $('#btnTestAlert').onclick = () => { unlockAudio(); beep(); };
+  $('#optNotify').onchange = async e => {
+    if (e.target.checked) {
+      if (!('Notification' in window)) { e.target.checked = false; alertMsg('This browser does not support notifications.'); return; }
+      const p = await Notification.requestPermission();
+      if (p !== 'granted') { e.target.checked = false; alertMsg('Notifications are blocked for this site in your browser settings.'); return; }
+    }
+    mcfg().notify = e.target.checked; saveConfig();
+  };
   $('#singleIgnore').onclick = () => {
     if (!keyAlert) return;
     const id = keyAlert.id;

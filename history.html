@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Motion History · Shop Cameras</title>
+<link rel="stylesheet" href="style.css?v=20261121220741">
+<link rel="stylesheet" href="history.css?v=20261121220741">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+</head>
+<body>
+<header class="bar">
+  <h2>Motion history</h2>
+  <span id="liveDot" class="live-dot" title="Updates live while the camera page is open in another tab"></span>
+  <div class="bar-right">
+    <select id="fCam" aria-label="Camera"><option value="">All cameras</option></select>
+    <select id="fKind" aria-label="Type">
+      <option value="">Everything</option>
+      <option value="Person">People</option>
+      <option value="vehicle">Vehicles</option>
+      <option value="animal">Animals</option>
+    </select>
+    <button id="btnClear" class="danger" title="Delete all saved motion on this device">Clear</button>
+  </div>
+</header>
+<main id="list" class="h-list"></main>
+<div id="more" class="h-more muted"></div>
+
+<div id="viewerModal" class="h-modal" hidden>
+  <div class="h-modal-top">
+    <span id="vTitle" class="h-title"></span>
+    <span class="spacer"></span>
+    <button id="vPlay" title="Play the recording from a few seconds before this moment">▶ Play recording</button>
+    <button id="vPrev" title="Newer (←)">‹</button>
+    <button id="vNext" title="Older (→)">›</button>
+    <button id="vClose" title="Close (Esc)">✕</button>
+  </div>
+  <div class="h-modal-body">
+    <img id="vImg" alt="">
+    <video id="vVideo" playsinline controls hidden></video>
+  </div>
+  <div id="vMsg" class="h-msg muted"></div>
+</div>
+
+<script src="history-db.js?v=20261121220741"></script>
+<script src="history.js?v=20261121220741"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@
  * as a Stored File so every device shares one setup. */
 'use strict';
 
-const APP_VERSION = '20261121211150';
+const APP_VERSION = '20261121220741';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -666,7 +666,8 @@ function renderCamTable() {
       <div class="flags"><label title="Pop up this camera when a person, vehicle or animal moves"><input type="checkbox" class="cmotion"> Motion</label>
       <label title="Key camera: bigger alert"><input type="checkbox" class="ckey"> ★ Key</label></div>
       <label><input type="checkbox" class="chide"> Hide</label>
-      <button type="button" class="carea" title="Draw an area to zoom in on and watch for motion"></button>`;
+      <button type="button" class="carea" title="Draw an area to zoom in on and watch for motion"></button>
+      <span class="csound"><select aria-label="Sound for this camera"></select><button type="button" class="cplay" title="Play this sound">▶</button></span>`;
     const input = $('input[aria-label]', row);
     input.value = cfg.names[c.id] || '';
     input.placeholder = c.name;
@@ -684,6 +685,11 @@ function renderCamTable() {
     cfg.noMotion = cfg.noMotion || {};
     mot.checked = !cfg.noMotion[c.id];
     mot.onchange = () => { if (mot.checked) delete cfg.noMotion[c.id]; else cfg.noMotion[c.id] = true; saveConfig(); };
+    const snd = $('.csound select', row);
+    for (const [k, name] of soundChoices()) { const o = document.createElement('option'); o.value = k; o.textContent = '♪ ' + name; snd.appendChild(o); }
+    snd.value = soundFor(c.id);
+    snd.onchange = () => { cfg.sounds = cfg.sounds || {}; cfg.sounds[c.id] = snd.value; saveConfig(); playSound(snd.value); };
+    $('.cplay', row).onclick = () => playSound(snd.value);
     const area = $('.carea', row);
     area.textContent = zoneOf(c.id) ? '▣ Area set' : '▢ Area';
     area.classList.toggle('on', !!zoneOf(c.id));
@@ -738,6 +744,7 @@ function wire() {
   $('#btnCols').onclick = cyclePhoneCols;
   wireSwipe();
   $('#btnSetup').onclick = openSetup;
+  $('#btnHistory').onclick = openHistoryWindow;
   $('#btnDone').onclick = closeSetup;
   $('#singleClose').onclick = userCloseSingle;
   $('#singleRotate').onclick = () => setRotating(!cfg.rotating);
@@ -803,6 +810,13 @@ function wireSwipe() {
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) userStep(dx < 0 ? 1 : -1);
     else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) userCloseSingle();
   }, { passive: true });
+}
+
+// Motion history opens in its own window on computers, so the camera page
+// stays visible (and keeps watching) beside it. Phones open it as a tab.
+function openHistoryWindow() {
+  const w = window.open('history.html', 'cv-history', isPhone() ? '' : 'popup,width=1000,height=800');
+  try { w && w.focus(); } catch {}
 }
 
 function toggleFullscreen() {
