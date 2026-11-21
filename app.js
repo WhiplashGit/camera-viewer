@@ -4,7 +4,7 @@
  * as a Stored File so every device shares one setup. */
 'use strict';
 
-const APP_VERSION = '20261121204438';
+const APP_VERSION = '20261121211150';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -114,8 +114,23 @@ async function loadCameras() {
   camById = new Map(cams.map(c => [c.id, c]));
 }
 
-async function fetchSnapshot(id, w, h) {
-  const r = await api(`/rest/v2/devices/${id}/image?size=${w}x${h}&format=jpg`, { raw: true });
+/* Watch area helpers (see zones.js). */
+function zoneOf(id) {
+  const z = cfg.zones && cfg.zones[id];
+  return z && z.w > 0.02 && z.h > 0.02 ? z : null;
+}
+function zoneQuery(z, w) {
+  // Size the request to the area's own shape so nothing gets stretched.
+  const ar = (z.ar || 4 / 3) * z.w / z.h;
+  const h = Math.max(32, Math.min(2048, Math.round(w / ar)));
+  const f = v => v.toFixed(4);
+  return `size=${w}x${h}&crop=${f(z.x)},${f(z.y)},${f(z.w)}x${f(z.h)}`;
+}
+
+async function fetchSnapshot(id, w, h, opts = {}) {
+  const z = !opts.full && cfg.zoomView && cfg.zoomView[id] ? zoneOf(id) : null;
+  const q = z ? zoneQuery(z, w) : `size=${w}x${h}`;
+  const r = await api(`/rest/v2/devices/${id}/image?${q}&format=jpg`, { raw: true });
   return URL.createObjectURL(await r.blob());
 }
 
@@ -440,6 +455,7 @@ function openSingle(group, index, opts = {}) {
   if (!id) return;
   $('#single').hidden = false;
   $('#singleName').textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
+  if (typeof applyStageZoom === 'function') applyStageZoom(id);
   const badge = $('#singleBadge');
   badge.hidden = !opts.badge; badge.textContent = opts.badge || '';
 
@@ -460,7 +476,7 @@ function openSingle(group, index, opts = {}) {
     if (old !== cur) stopPlayer(old);
     const tick = async () => {
       if (!single || single.id !== id) return;
-      try { setSingleImg(await fetchSnapshot(id, 1280, 720)); }
+      try { setSingleImg(await fetchSnapshot(id, 1280, 720, { full: true })); }
       catch (e) { if (handleError(e)) return; }
       if (single && single.id === id) single.snapTimer = setTimeout(tick, 1000);
     };
@@ -475,7 +491,7 @@ function openSingle(group, index, opts = {}) {
   }
   // Keep the previous picture up until this camera's snapshot arrives,
   // then show the snapshot until live video starts.
-  fetchSnapshot(id, 1280, 720).then(url => {
+  fetchSnapshot(id, 1280, 720, { full: true }).then(url => {
     if (!single || single.cur !== cur || cur.playing) { URL.revokeObjectURL(url); return; }
     setSingleImg(url);
     for (const v of singleVideos()) if (v !== cur.video) v.classList.remove('show');
@@ -649,7 +665,8 @@ function renderCamTable() {
       <div class="names"><input aria-label="Custom name"><span class="orig"></span></div>
       <div class="flags"><label title="Pop up this camera when a person, vehicle or animal moves"><input type="checkbox" class="cmotion"> Motion</label>
       <label title="Key camera: bigger alert"><input type="checkbox" class="ckey"> ★ Key</label></div>
-      <label><input type="checkbox" class="chide"> Hide</label>`;
+      <label><input type="checkbox" class="chide"> Hide</label>
+      <button type="button" class="carea" title="Draw an area to zoom in on and watch for motion"></button>`;
     const input = $('input[aria-label]', row);
     input.value = cfg.names[c.id] || '';
     input.placeholder = c.name;
@@ -667,6 +684,10 @@ function renderCamTable() {
     cfg.noMotion = cfg.noMotion || {};
     mot.checked = !cfg.noMotion[c.id];
     mot.onchange = () => { if (mot.checked) delete cfg.noMotion[c.id]; else cfg.noMotion[c.id] = true; saveConfig(); };
+    const area = $('.carea', row);
+    area.textContent = zoneOf(c.id) ? '▣ Area set' : '▢ Area';
+    area.classList.toggle('on', !!zoneOf(c.id));
+    area.onclick = () => openZoneEditor(c.id);
     const hide = $('.chide', row);
     hide.checked = !!cfg.hidden[c.id];
     hide.onchange = () => {

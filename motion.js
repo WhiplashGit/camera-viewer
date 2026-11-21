@@ -154,7 +154,10 @@ function greyOf(bitmap) {
 }
 
 async function snapBitmap(id, w, h) {
-  const r = await api(`/rest/v2/devices/${id}/image?size=${w}x${h}&format=jpg`, { raw: true });
+  // Motion only ever looks inside the camera's watch area, if it has one.
+  const z = zoneOf(id);
+  const q = z ? zoneQuery(z, w) : `size=${w}x${h}`;
+  const r = await api(`/rest/v2/devices/${id}/image?${q}&format=jpg`, { raw: true });
   return createImageBitmap(await r.blob());
 }
 

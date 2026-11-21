@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121204438">
+<link rel="stylesheet" href="style.css?v=20261121211150">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -51,9 +51,11 @@
 
 <!-- Single camera -->
 <div id="single" class="single" hidden>
-  <img id="singleImg" alt="" hidden>
-  <video playsinline muted autoplay></video>
-  <video playsinline muted autoplay></video>
+  <div id="singleStage" class="stage">
+    <img id="singleImg" alt="" hidden>
+    <video playsinline muted autoplay></video>
+    <video playsinline muted autoplay></video>
+  </div>
   <div class="single-top">
     <span id="singleName" class="single-name"></span>
     <span id="singleBadge" class="badge" hidden></span>
@@ -63,6 +65,21 @@
     <button id="singlePrev" title="Previous (←)">‹</button>
     <button id="singleNext" title="Next (→)">›</button>
     <button id="singleClose" title="Close (Esc)">✕</button>
+  </div>
+</div>
+
+<!-- Watch area editor -->
+<div id="zoneEd" class="zone-ed" hidden>
+  <div class="zone-card">
+    <div class="zone-head">
+      <b id="zoneTitle"></b><span class="spacer"></span>
+      <button id="zoneCancel" type="button">Cancel</button>
+      <button id="zoneClear" type="button">Whole picture</button>
+      <button id="zoneSave" type="button" class="primary">Save</button>
+    </div>
+    <p class="muted">Drag a box around the spot to watch, like your door or the gate. Motion pop-ups will only look inside it, and the AI gets a zoomed-in view, which helps it spot people.</p>
+    <div id="zoneStage" class="zone-stage"><img id="zoneImg" alt=""><div id="zoneRect" class="zone-rect" hidden></div></div>
+    <label class="check"><input type="checkbox" id="zoneZoom"> Also zoom the grid tile and full-screen view to this area</label>
   </div>
 </div>
 
@@ -197,8 +214,9 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121204438"></script>
-<script src="motion.js?v=20261121204438"></script>
-<script src="power.js?v=20261121204438"></script>
+<script src="app.js?v=20261121211150"></script>
+<script src="motion.js?v=20261121211150"></script>
+<script src="power.js?v=20261121211150"></script>
+<script src="zones.js?v=20261121211150"></script>
 </body>
 </html>
