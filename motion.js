@@ -24,7 +24,9 @@ const SENS = {               // fraction of the picture that must change, detect
 const DIFF_W = 64, DIFF_H = 36;           // motion grid
 const PIXEL_DELTA = 28;                   // grey-level change that counts as "changed"
 const POPUP_HOLD_MS = 25000;              // keep a pop-up this long after the last detection
-const COOLDOWN_MS = 8000;                 // don't re-alert the same camera faster than this
+const COOLDOWN_MS = 8000;
+const MAX_DETECT_PER_PASS = 3;           // AI checks per pass, busiest cameras first
+const DETECT_BACKOFF_MS = 15000;          // re-check a camera that keeps changing with nothing found this often                 // don't re-alert the same camera faster than this
 const KEY_HOLD_MS = 30000;                // full-screen alert length for key cameras
 const maxPopups = () => (Math.min(window.innerWidth, window.innerHeight) < 600 ? 2 : 4);
 
@@ -57,6 +59,7 @@ async function loadModel() {
       await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
       await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
       try { await tf.setBackend('webgl'); } catch {}
+      try { tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0); } catch {}
       await tf.ready();
       motionModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
       return motionModel;
@@ -86,16 +89,37 @@ async function startMotion() {
   while (gen === motionGen && session) {
     const started = Date.now();
     if (!document.hidden) {
+      // Pass 1 (cheap): small snapshot of every camera, compared with the last one.
       const ids = watchedCams();
+      const candidates = [];
       let next = 0;
       const worker = async () => {
         while (next < ids.length && gen === motionGen) {
           const id = ids[next++];
-          try { await checkCamera(id); }
+          try { const c = await diffCamera(id); if (c) candidates.push(c); }
           catch (e) { if (handleError(e)) { motionGen++; return; } }
         }
       };
       await Promise.all(Array.from({ length: 4 }, worker));
+
+      // Pass 2 (expensive): run the AI on only the few cameras that changed most.
+      // Cameras that keep changing with nothing found (trees in wind, rain,
+      // night noise) are only re-checked every so often.
+      const now = Date.now();
+      const picked = candidates
+        .filter(c => {
+          const st = camState.get(c.id);
+          const active = st.lastHit && now - st.lastHit < 15000;
+          return active || !st.lastDetect || now - st.lastDetect > DETECT_BACKOFF_MS;
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, MAX_DETECT_PER_PASS);
+      for (const c of picked) {
+        if (gen !== motionGen) break;
+        try { await detectCamera(c); }
+        catch (e) { if (handleError(e)) { motionGen++; break; } console.error(e); }
+      }
+      updateMotionStats();
     }
     const wait = mcfg().intervalS * 1000 - (Date.now() - started);
     await new Promise(r => setTimeout(r, Math.max(300, wait)));
@@ -123,30 +147,50 @@ async function snapBitmap(id, w, h) {
   return createImageBitmap(await r.blob());
 }
 
-async function checkCamera(id) {
+/* Returns {id, changed, score} when enough of the picture changed, else null. */
+async function diffCamera(id) {
   const st = camState.get(id) || {};
   camState.set(id, st);
   const small = await snapBitmap(id, 320, 180);
+  stat('snaps');
   const grey = greyOf(small);
   small.close?.();
   const prev = st.grey;
   st.grey = grey;
-  if (!prev) return;
+  if (!prev) return null;
 
+  const raw = new Uint8Array(grey.length);
+  for (let i = 0; i < grey.length; i++) if (Math.abs(grey[i] - prev[i]) > PIXEL_DELTA) raw[i] = 1;
+  // Ignore speckle: a changed cell only counts if at least 2 neighbours changed too.
   const changed = new Uint8Array(grey.length);
   let n = 0;
-  for (let i = 0; i < grey.length; i++) {
-    if (Math.abs(grey[i] - prev[i]) > PIXEL_DELTA) { changed[i] = 1; n++; }
+  for (let y = 0; y < DIFF_H; y++) for (let x = 0; x < DIFF_W; x++) {
+    const i = y * DIFF_W + x;
+    if (!raw[i]) continue;
+    let nb = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const xx = x + dx, yy = y + dy;
+      if (xx >= 0 && yy >= 0 && xx < DIFF_W && yy < DIFF_H) nb += raw[yy * DIFF_W + xx];
+    }
+    if (nb >= 2) { changed[i] = 1; n++; }
   }
   const frac = n / grey.length;
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
-  if (frac < sens.change || frac > 0.6) return;   // nothing moved, or a whole-picture lighting change
+  if (frac < sens.change || frac > 0.6) return null;   // nothing moved, or a whole-picture lighting change
+  return { id, changed, score: frac };
+}
 
-  // Something moved: look closer with the detector.
+async function detectCamera({ id, changed }) {
+  const st = camState.get(id);
+  st.lastDetect = Date.now();
+  const sens = SENS[mcfg().sensitivity] || SENS.normal;
   const big = await snapBitmap(id, 640, 360);
   let dets;
+  const t0 = performance.now();
   try { dets = await motionModel.detect(big, 10, sens.score); }
   catch (e) { big.close?.(); throw e; }
+  stat('dets', performance.now() - t0);
 
   const hits = [];
   for (const d of dets) {
@@ -163,7 +207,32 @@ async function checkCamera(id) {
     if (inside >= 2) hits.push({ label, score: d.score, bbox: d.bbox });
   }
   if (!hits.length) { big.close?.(); return; }
+  st.lastHit = Date.now();
   onDetection(id, hits, big);
+}
+
+/* ---------- Usage stats (last 60 seconds) ---------- */
+
+const stats = { snaps: [], dets: [] };
+function stat(kind, ms) {
+  const now = Date.now();
+  stats[kind].push([now, ms || 0]);
+  while (stats[kind].length && now - stats[kind][0][0] > 60000) stats[kind].shift();
+}
+
+function motionStatsText() {
+  const now = Date.now();
+  const recent = k => stats[k].filter(e => now - e[0] <= 60000);
+  const s = recent('snaps'), d = recent('dets');
+  const avg = d.length ? Math.round(d.reduce((a, e) => a + e[1], 0) / d.length) : 0;
+  return `Last minute: ${s.length} snapshots compared, ${d.length} AI checks` + (d.length ? ` (about ${avg} ms each)` : '') + '.';
+}
+
+function updateMotionStats() {
+  const el = $('#motionStats');
+  if (el) el.textContent = motionStatsText();
+  const b = $('#btnMotion');
+  if (b && b.dataset.state === 'on') b.title = `Watching ${watchedCams().length} cameras. ${motionStatsText()} Click to pause.`;
 }
 
 /* ---------- Alerts ---------- */
