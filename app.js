@@ -4,7 +4,7 @@
  * as a Stored File so every device shares one setup. */
 'use strict';
 
-const APP_VERSION = '20261121193552';
+const APP_VERSION = '20261121194211';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121193552">
+<link rel="stylesheet" href="style.css?v=20261121194211">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -58,6 +58,7 @@
     <span id="singleName" class="single-name"></span>
     <span id="singleBadge" class="badge" hidden></span>
     <span class="spacer"></span>
+    <button id="singleIgnore" title="Not a real person/vehicle: never alert for this spot again" hidden>Not real</button>
     <button id="singleRotate" class="toggle" title="Rotate through this group (R)">⟳</button>
     <button id="singlePrev" title="Previous (←)">‹</button>
     <button id="singleNext" title="Next (→)">›</button>
@@ -144,6 +145,7 @@
         <button id="btnTestAlert" type="button">Test sound</button>
       </div>
       <p id="motionStats" class="muted mt"></p>
+      <div class="row-btns"><button id="btnClearIgnored" type="button">Clear "Not real" spots</button><span id="ignoredMsg" class="muted"></span></div>
       <details class="mt"><summary>Recent activity</summary><div id="motionLog" class="motion-log"></div></details>
     </div>
 
@@ -178,7 +180,7 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121193552"></script>
-<script src="motion.js?v=20261121193552"></script>
+<script src="app.js?v=20261121194211"></script>
+<script src="motion.js?v=20261121194211"></script>
 </body>
 </html>

@@ -17,9 +17,9 @@ const TARGETS = {
   bus: 'Bus', dog: 'Dog', cat: 'Cat', horse: 'Horse', cow: 'Animal', sheep: 'Animal', bear: 'Animal',
 };
 const SENS = {               // fraction of the picture that must change, detector min score
-  high: { change: 0.0008, score: 0.35 },
-  normal: { change: 0.0015, score: 0.45 },
-  low: { change: 0.004, score: 0.55 },
+  high: { change: 0.0008, score: 0.42 },
+  normal: { change: 0.0015, score: 0.52 },
+  low: { change: 0.004, score: 0.62 },
 };
 const DIFF_W = 64, DIFF_H = 36;           // motion grid
 const PIXEL_DELTA = 18;                   // grey-level change from the background that counts as "changed"
@@ -118,6 +118,7 @@ async function startMotion() {
         if (st.lastHit && now - st.lastHit < 15000) c.score += 1;
         if (!st.lastDetect || now - st.lastDetect > 10000) c.score += 0.5;
         if (c.routine) c.score -= 0.25;
+        if (st.urgentUntil && now < st.urgentUntil) c.score += 2;   // confirming a possible person/vehicle
       }
       candidates.sort((a, b) => b.score - a.score);
       lastPass = { at: Date.now(), cams: ids.length, moving: candidates.filter(c => !c.routine).length, ms: Date.now() - started };
@@ -212,7 +213,8 @@ async function diffCamera(id) {
   if (!st.peak || score > st.peak.score || Date.now() - st.peak.t > 60000) st.peak = { score, t: Date.now() };
   // With only a few watched cameras, also run the AI on each one regularly, so a
   // person is caught even if the picture change was too small to notice.
-  const routine = watchedCams().length <= 8 && (!st.lastDetect || Date.now() - st.lastDetect > ROUTINE_AI_MS);
+  const urgent = st.urgentUntil && Date.now() < st.urgentUntil;
+  const routine = urgent || (watchedCams().length <= 8 && (!st.lastDetect || Date.now() - st.lastDetect > ROUTINE_AI_MS));
   if ((score < sens.change || lighting) && !routine) return null;
   return { id, changed, score, routine: score < sens.change || lighting };
 }
@@ -224,9 +226,10 @@ function iou(a, b) {
   return inter / (a[2] * a[3] + b[2] * b[3] - inter || 1);
 }
 
-async function detectCamera({ id, changed, routine }) {
+async function detectCamera({ id, routine }) {
   const st = camState.get(id);
-  st.lastDetect = Date.now();
+  const now = Date.now();
+  st.lastDetect = now;
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
   const big = await snapBitmap(id, 640, 360);
   let dets;
@@ -235,35 +238,58 @@ async function detectCamera({ id, changed, routine }) {
   catch (e) { big.close?.(); throw e; }
   stat('dets', performance.now() - t0);
 
+  // `known` remembers objects that sit in one place (parked cars, a bike against
+  // a wall). Their outlines jitter from check to check, especially when a shadow
+  // or flag passes over them, so they only count if they really move away.
+  // Anything new or moved must show up in two checks in a row before it pops up,
+  // which filters out one-off misreads.
+  st.known = (st.known || []).filter(k => now - k.lastSeen < 5 * 60 * 1000);
+  const pending = (st.pending || []).filter(p => now - p.t < 8000);
+  st.pending = [];
+  const firstLook = !st.seenOnce;
+  st.seenOnce = true;
   const hits = [];
-  const prevBoxes = st.boxes || [];
-  st.boxes = [];
+  const W = big.width, H = big.height;
+  const ignored = (cfg.ignoreSpots && cfg.ignoreSpots[id]) || [];
   for (const d of dets) {
     const label = TARGETS[d.class];
     if (!label) continue;
-    st.boxes.push({ label, bbox: d.bbox });
-    // New or moved since the last AI check (a parked car stays put and is ignored).
-    const moved = !prevBoxes.some(p => p.label === label && iou(p.bbox, d.bbox) > 0.6);
-    const [x, y, w, h] = d.bbox;
-    // Count changed motion-grid cells inside the box. The server may keep the
-    // camera's own aspect ratio, so scale by the real image size.
-    const sx = big.width / DIFF_W, sy = big.height / DIFF_H;
-    const x0 = Math.max(0, Math.floor(x / sx)), x1 = Math.min(DIFF_W - 1, Math.floor((x + w) / sx));
-    const y0 = Math.max(0, Math.floor(y / sy)), y1 = Math.min(DIFF_H - 1, Math.floor((y + h) / sy));
-    let inside = 0;
-    for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) inside += changed[yy * DIFF_W + xx];
-    if (inside >= 2 || (moved && st.seenOnce)) hits.push({ label, score: d.score, bbox: d.bbox });
+    const box = d.bbox;
+    const norm = [box[0] / W, box[1] / H, box[2] / W, box[3] / H];
+    if (ignored.some(s => s.label === label && iou(s.box, norm) > 0.3)) continue;   // marked "not real" by you
+    if (pending.some(p => p.label === label && iou(p.bbox, box) > 0.15)) {
+      hits.push({ label, score: d.score, bbox: box, norm });
+      continue;
+    }
+    let best = null, bestIou = 0;
+    for (const k of st.known) {
+      if (k.label !== label) continue;
+      const v = iou(k.bbox, box);
+      if (v > bestIou) { bestIou = v; best = k; }
+    }
+    if (best && bestIou > 0.35) { best.lastSeen = now; continue; }   // same object, same place
+    // New, or moved well away from where it was.
+    if (best && bestIou > 0) { best.bbox = box; best.lastSeen = now; }
+    else st.known.push({ label, bbox: box, lastSeen: now });
+    if (!firstLook) st.pending.push({ label, bbox: box, t: now });
   }
-  const firstLook = !st.seenOnce;
-  st.seenOnce = true;
+  if (st.pending.length) st.urgentUntil = now + 6000;   // confirm on the very next pass
+
   if (!hits.length) {
     big.close?.();
+    if (st.pending.length) { logEvent(id, `Possible ${[...new Set(st.pending.map(p => p.label))].join(', ')}, double-checking`); return; }
     if (routine && !firstLook) return;   // quiet routine check: don't fill the log
     const seen = [...new Set(dets.map(d => TARGETS[d.class]).filter(Boolean))];
     logEvent(id, seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : firstLook ? 'Started watching' : 'Movement checked, no person, vehicle or animal');
     return;
   }
-  st.lastHit = Date.now();
+  // Remember where the confirmed objects are now, so they only re-alert if they keep moving.
+  for (const h of hits) {
+    let best = null, bestIou = 0;
+    for (const k of st.known) if (k.label === h.label) { const v = iou(k.bbox, h.bbox); if (v > bestIou) { bestIou = v; best = k; } }
+    if (best) { best.bbox = h.bbox; best.lastSeen = now; } else st.known.push({ label: h.label, bbox: h.bbox, lastSeen: now });
+  }
+  st.lastHit = now;
   logEvent(id, 'Pop-up: ' + [...new Set(hits.map(h => h.label))].join(', '), true);
   onDetection(id, hits, big);
 }
@@ -361,9 +387,12 @@ function showPopup(id, label, hits, bitmap) {
     el.className = 'popup' + (cfg.key[id] ? ' key' : '');
     el.innerHTML = `<canvas width="640" height="360"></canvas>
       <div class="popup-bar"><span class="popup-name"></span><span class="popup-label"></span>
-      <span class="spacer"></span><span class="popup-time"></span><button class="popup-x" title="Dismiss">✕</button></div>`;
+      <span class="spacer"></span><span class="popup-time"></span>
+      <button class="popup-ignore" title="Not a real person/vehicle: never alert for this spot again">Not real</button>
+      <button class="popup-x" title="Dismiss">✕</button></div>`;
     el.onclick = e => {
       if (e.target.closest('.popup-x')) { dismissPopup(id); return; }
+      if (e.target.closest('.popup-ignore')) { ignoreSpots(id, popups.get(id)?.hits || []); dismissPopup(id); return; }
       openSingle({ id: 'motion', name: displayName(id), cams: [id] }, 0, { badge: label });
       dismissPopup(id);
     };
@@ -373,6 +402,7 @@ function showPopup(id, label, hits, bitmap) {
   }
   $('.popup-name', p.el).textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
   $('.popup-label', p.el).textContent = label;
+  p.hits = hits;
   p.count = (p.count || 0) + 1;
   $('.popup-time', p.el).textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (p.count > 1 ? ` ×${p.count}` : '');
   updateDismissAll();
@@ -391,6 +421,15 @@ function showPopup(id, label, hits, bitmap) {
   p.el.classList.remove('flash'); void p.el.offsetWidth; p.el.classList.add('flash');
   clearTimeout(p.timer);
   p.timer = setTimeout(() => dismissPopup(id), POPUP_HOLD_MS);
+}
+
+function ignoreSpots(id, hits) {
+  cfg.ignoreSpots = cfg.ignoreSpots || {};
+  const list = cfg.ignoreSpots[id] = cfg.ignoreSpots[id] || [];
+  for (const h of hits) if (h.norm) list.push({ label: h.label, box: h.norm.map(v => Math.round(v * 1000) / 1000) });
+  saveConfig();
+  logEvent(id, `Marked as not real. That spot will be ignored (${list.length} ignored spot${list.length === 1 ? '' : 's'} on this camera)`);
+  if (keyAlert && keyAlert.id === id) endKeyAlert(true);
 }
 
 function dismissPopup(id) {
@@ -419,6 +458,7 @@ function keyCameraAlert(id, label, fresh) {
   keyAlert = { id, until, prev };
   openSingle({ id: 'alert', name: displayName(id), cams: [id] }, 0, { badge: '⚠ ' + label });
   $('#single').classList.add('alerting');
+  $('#singleIgnore').hidden = false;
   if (fresh && mcfg().sound) beep();
   scheduleKeyAlertEnd();
 }
@@ -439,6 +479,7 @@ function endKeyAlert(restore) {
   clearTimeout(keyAlert.timer);
   keyAlert = null;
   $('#single').classList.remove('alerting');
+  $('#singleIgnore').hidden = true;
   if (!restore) return;
   if (prev) openSingle(prev.group, prev.index);
   else if (cfg.rotating) { const g = activeGroup(); if (g.cams.length) openSingle(g, 0); else closeSingle(); }
@@ -511,6 +552,17 @@ function wireMotion() {
   $('#optSound').onchange = e => { mcfg().sound = e.target.checked; saveConfig(); };
   $('#optScope').onchange = e => { mcfg().scope = e.target.value; saveConfig(); updateMotionStats(); };
   $('#btnTestAlert').onclick = () => { unlockAudio(); beep(); };
+  $('#singleIgnore').onclick = () => {
+    if (!keyAlert) return;
+    const id = keyAlert.id;
+    ignoreSpots(id, popups.get(id)?.hits || []);
+    dismissPopup(id);
+  };
+  $('#btnClearIgnored').onclick = () => {
+    const n = Object.values(cfg.ignoreSpots || {}).reduce((a, l) => a + l.length, 0);
+    cfg.ignoreSpots = {}; saveConfig();
+    $('#ignoredMsg').textContent = n ? `Cleared ${n} spot${n === 1 ? '' : 's'}.` : 'There were none.';
+  };
   $('#popupsClear').onclick = () => { for (const id of [...popups.keys()]) dismissPopup(id); };
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   document.addEventListener('keydown', unlockAudio, { once: true });
