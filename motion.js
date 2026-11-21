@@ -115,6 +115,7 @@ async function startMotion() {
         if (!st.lastDetect || now - st.lastDetect > 10000) c.score += 0.5;
       }
       candidates.sort((a, b) => b.score - a.score);
+      lastPass = { at: Date.now(), cams: ids.length, moving: candidates.length, ms: Date.now() - started };
       const picked = candidates.slice(0, MAX_DETECT_PER_PASS);
       for (const c of candidates.slice(MAX_DETECT_PER_PASS)) logEvent(c.id, 'Movement, waiting for a free AI check');
       for (const c of picked) {
@@ -161,6 +162,13 @@ async function diffCamera(id) {
   const prev = st.grey;
   st.grey = grey;
   if (!prev) return null;
+  // Exactly the same picture twice means the server handed back a cached frame.
+  let same = true;
+  for (let i = 0; i < grey.length; i++) if (grey[i] !== prev[i]) { same = false; break; }
+  if (same) {
+    st.sameCount = (st.sameCount || 0) + 1;
+    if (st.sameCount === 3) logEvent(id, 'Server keeps sending the same still picture, so movement can\'t be seen');
+  } else st.sameCount = 0;
 
   const raw = new Uint8Array(grey.length);
   for (let i = 0; i < grey.length; i++) if (Math.abs(grey[i] - prev[i]) > PIXEL_DELTA) raw[i] = 1;
@@ -233,6 +241,7 @@ async function detectCamera({ id, changed }) {
 /* ---------- Activity log ---------- */
 
 const activity = [];
+let lastPass = null;
 function logEvent(id, text, hit) {
   const last = activity[0];
   if (last && last.id === id && last.text === text && Date.now() - last.t < 20000) { last.t = Date.now(); last.n++; }
@@ -269,7 +278,8 @@ function motionStatsText() {
   const recent = k => stats[k].filter(e => now - e[0] <= 60000);
   const s = recent('snaps'), d = recent('dets');
   const avg = d.length ? Math.round(d.reduce((a, e) => a + e[1], 0) / d.length) : 0;
-  return `Last minute: ${s.length} snapshots compared, ${d.length} AI checks` + (d.length ? ` (about ${avg} ms each)` : '') + '.';
+  const pass = lastPass ? ` Last pass: ${lastPass.moving} of ${lastPass.cams} cameras had new movement, took ${(lastPass.ms / 1000).toFixed(1)} s.` : '';
+  return `Last minute: ${s.length} snapshots compared, ${d.length} AI checks` + (d.length ? ` (about ${avg} ms each)` : '') + '.' + pass;
 }
 
 function updateMotionStats() {
