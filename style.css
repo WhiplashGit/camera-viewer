@@ -201,3 +201,6 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .log-row { color: var(--muted); padding: 3px 6px; border-radius: 4px; }
 .log-row.hit { color: var(--text); background: rgba(255,204,0,.12); }
 summary { cursor: pointer; font-weight: 600; }
+
+.popup-time { color: var(--muted); font-size: 12px; white-space: nowrap; font-weight: 500; }
+.popups-clear { pointer-events: auto; align-self: flex-end; background: rgba(0,0,0,.8); }

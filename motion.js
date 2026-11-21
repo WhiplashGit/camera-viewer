@@ -17,13 +17,15 @@ const TARGETS = {
   bus: 'Bus', dog: 'Dog', cat: 'Cat', horse: 'Horse', cow: 'Animal', sheep: 'Animal', bear: 'Animal',
 };
 const SENS = {               // fraction of the picture that must change, detector min score
-  high: { change: 0.002, score: 0.40 },
-  normal: { change: 0.005, score: 0.50 },
-  low: { change: 0.012, score: 0.60 },
+  high: { change: 0.0008, score: 0.35 },
+  normal: { change: 0.0015, score: 0.45 },
+  low: { change: 0.004, score: 0.55 },
 };
 const DIFF_W = 64, DIFF_H = 36;           // motion grid
-const PIXEL_DELTA = 28;                   // grey-level change that counts as "changed"
-const POPUP_HOLD_MS = 25000;              // keep a pop-up this long after the last detection
+const PIXEL_DELTA = 18;                   // grey-level change from the background that counts as "changed"
+const BG_ALPHA = 0.15;                    // how fast the background picture adapts
+const ROUTINE_AI_MS = 2500;               // with few watched cameras, AI-check each one at least this often
+const POPUP_HOLD_MS = 5 * 60 * 1000;      // pop-ups stay until dismissed, or 5 minutes after the last detection
 const COOLDOWN_MS = 8000;
 const MAX_DETECT_PER_PASS = 4;           // AI checks per pass, most "new" movement first
 const NOISE_ALPHA = 0.04;                 // how fast a cell learns it is noisy (~25 passes)
@@ -87,7 +89,7 @@ async function startMotion() {
   const gen = ++motionGen;
   setMotionStatus('loading');
   try { await loadModel(); }
-  catch (e) { console.error(e); setMotionStatus('error'); return; }
+  catch (e) { console.error(e); setMotionStatus('error'); logEvent(watchedCams()[0] || '', 'The AI detector could not load: ' + e.message); return; }
   if (gen !== motionGen) return;
   setMotionStatus('on');
   while (gen === motionGen && session) {
@@ -115,11 +117,12 @@ async function startMotion() {
         const st = camState.get(c.id);
         if (st.lastHit && now - st.lastHit < 15000) c.score += 1;
         if (!st.lastDetect || now - st.lastDetect > 10000) c.score += 0.5;
+        if (c.routine) c.score -= 0.25;
       }
       candidates.sort((a, b) => b.score - a.score);
-      lastPass = { at: Date.now(), cams: ids.length, moving: candidates.length, ms: Date.now() - started };
+      lastPass = { at: Date.now(), cams: ids.length, moving: candidates.filter(c => !c.routine).length, ms: Date.now() - started };
       const picked = candidates.slice(0, MAX_DETECT_PER_PASS);
-      for (const c of candidates.slice(MAX_DETECT_PER_PASS)) logEvent(c.id, 'Movement, waiting for a free AI check');
+      for (const c of candidates.slice(MAX_DETECT_PER_PASS)) if (!c.routine) logEvent(c.id, 'Movement, waiting for a free AI check');
       for (const c of picked) {
         if (gen !== motionGen) break;
         try { await detectCamera(c); }
@@ -164,7 +167,7 @@ async function diffCamera(id) {
   small.close?.();
   const prev = st.grey;
   st.grey = grey;
-  if (!prev) return null;
+  if (!prev) { st.bg = Float32Array.from(grey); return null; }
   // Exactly the same picture twice means the server handed back a cached frame.
   let same = true;
   for (let i = 0; i < grey.length; i++) if (grey[i] !== prev[i]) { same = false; break; }
@@ -174,7 +177,11 @@ async function diffCamera(id) {
   } else st.sameCount = 0;
 
   const raw = new Uint8Array(grey.length);
-  for (let i = 0; i < grey.length; i++) if (Math.abs(grey[i] - prev[i]) > PIXEL_DELTA) raw[i] = 1;
+  const bg = st.bg;
+  for (let i = 0; i < grey.length; i++) {
+    if (Math.abs(grey[i] - bg[i]) > PIXEL_DELTA || Math.abs(grey[i] - prev[i]) > PIXEL_DELTA) raw[i] = 1;
+    bg[i] += BG_ALPHA * (grey[i] - bg[i]);
+  }
   // Ignore speckle: a changed cell only counts if at least 2 neighbours changed too.
   const changed = new Uint8Array(grey.length);
   let n = 0;
@@ -187,10 +194,11 @@ async function diffCamera(id) {
       const xx = x + dx, yy = y + dy;
       if (xx >= 0 && yy >= 0 && xx < DIFF_W && yy < DIFF_H) nb += raw[yy * DIFF_W + xx];
     }
-    if (nb >= 2) { changed[i] = 1; n++; }
+    if (nb >= 1) { changed[i] = 1; n++; }
   }
   const frac = n / grey.length;
-  if (frac > 0.6) return null;                    // whole-picture lighting change (clouds, IR switching)
+  const lighting = frac > 0.6;                    // whole-picture lighting change (clouds, IR switching)
+  if (lighting) { st.bg = Float32Array.from(grey); changed.fill(0); }
 
   // Learn which cells are always moving, and count only movement in normally still areas.
   st.noise = st.noise || new Float32Array(grey.length);
@@ -201,11 +209,22 @@ async function diffCamera(id) {
   }
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
   const score = novel / grey.length;
-  if (score < sens.change) return null;
-  return { id, changed, score };
+  if (!st.peak || score > st.peak.score || Date.now() - st.peak.t > 60000) st.peak = { score, t: Date.now() };
+  // With only a few watched cameras, also run the AI on each one regularly, so a
+  // person is caught even if the picture change was too small to notice.
+  const routine = watchedCams().length <= 8 && (!st.lastDetect || Date.now() - st.lastDetect > ROUTINE_AI_MS);
+  if ((score < sens.change || lighting) && !routine) return null;
+  return { id, changed, score, routine: score < sens.change || lighting };
 }
 
-async function detectCamera({ id, changed }) {
+function iou(a, b) {
+  const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+  const x2 = Math.min(a[0] + a[2], b[0] + b[2]), y2 = Math.min(a[1] + a[3], b[1] + b[3]);
+  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  return inter / (a[2] * a[3] + b[2] * b[3] - inter || 1);
+}
+
+async function detectCamera({ id, changed, routine }) {
   const st = camState.get(id);
   st.lastDetect = Date.now();
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
@@ -217,9 +236,14 @@ async function detectCamera({ id, changed }) {
   stat('dets', performance.now() - t0);
 
   const hits = [];
+  const prevBoxes = st.boxes || [];
+  st.boxes = [];
   for (const d of dets) {
     const label = TARGETS[d.class];
     if (!label) continue;
+    st.boxes.push({ label, bbox: d.bbox });
+    // New or moved since the last AI check (a parked car stays put and is ignored).
+    const moved = !prevBoxes.some(p => p.label === label && iou(p.bbox, d.bbox) > 0.6);
     const [x, y, w, h] = d.bbox;
     // Count changed motion-grid cells inside the box. The server may keep the
     // camera's own aspect ratio, so scale by the real image size.
@@ -228,12 +252,15 @@ async function detectCamera({ id, changed }) {
     const y0 = Math.max(0, Math.floor(y / sy)), y1 = Math.min(DIFF_H - 1, Math.floor((y + h) / sy));
     let inside = 0;
     for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) inside += changed[yy * DIFF_W + xx];
-    if (inside >= 2) hits.push({ label, score: d.score, bbox: d.bbox });
+    if (inside >= 2 || (moved && st.seenOnce)) hits.push({ label, score: d.score, bbox: d.bbox });
   }
+  const firstLook = !st.seenOnce;
+  st.seenOnce = true;
   if (!hits.length) {
     big.close?.();
+    if (routine && !firstLook) return;   // quiet routine check: don't fill the log
     const seen = [...new Set(dets.map(d => TARGETS[d.class]).filter(Boolean))];
-    logEvent(id, seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : 'Movement checked, no person, vehicle or animal');
+    logEvent(id, seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : firstLook ? 'Started watching' : 'Movement checked, no person, vehicle or animal');
     return;
   }
   st.lastHit = Date.now();
@@ -281,8 +308,12 @@ function motionStatsText() {
   const recent = k => stats[k].filter(e => now - e[0] <= 60000);
   const s = recent('snaps'), d = recent('dets');
   const avg = d.length ? Math.round(d.reduce((a, e) => a + e[1], 0) / d.length) : 0;
+  let peakTxt = '';
+  let best = null;
+  for (const [id, st] of camState) if (st.peak && now - st.peak.t <= 60000 && (!best || st.peak.score > best.score)) best = { id, score: st.peak.score };
+  if (best) peakTxt = ` Biggest movement: ${(best.score * 100).toFixed(2)}% on ${displayName(best.id)}.`;
   const pass = lastPass ? ` Last pass: ${lastPass.moving} of ${lastPass.cams} cameras had new movement, took ${(lastPass.ms / 1000).toFixed(1)} s.` : '';
-  return `Last minute: ${s.length} snapshots compared, ${d.length} AI checks` + (d.length ? ` (about ${avg} ms each)` : '') + '.' + pass;
+  return `Last minute: ${s.length} snapshots compared, ${d.length} AI checks` + (d.length ? ` (about ${avg} ms each)` : '') + '.' + pass + peakTxt;
 }
 
 function updateMotionStats() {
@@ -330,7 +361,7 @@ function showPopup(id, label, hits, bitmap) {
     el.className = 'popup' + (cfg.key[id] ? ' key' : '');
     el.innerHTML = `<canvas width="640" height="360"></canvas>
       <div class="popup-bar"><span class="popup-name"></span><span class="popup-label"></span>
-      <span class="spacer"></span><button class="popup-x" title="Dismiss">✕</button></div>`;
+      <span class="spacer"></span><span class="popup-time"></span><button class="popup-x" title="Dismiss">✕</button></div>`;
     el.onclick = e => {
       if (e.target.closest('.popup-x')) { dismissPopup(id); return; }
       openSingle({ id: 'motion', name: displayName(id), cams: [id] }, 0, { badge: label });
@@ -342,6 +373,9 @@ function showPopup(id, label, hits, bitmap) {
   }
   $('.popup-name', p.el).textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
   $('.popup-label', p.el).textContent = label;
+  p.count = (p.count || 0) + 1;
+  $('.popup-time', p.el).textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (p.count > 1 ? ` ×${p.count}` : '');
+  updateDismissAll();
   if (p.canvas.width !== bitmap.width || p.canvas.height !== bitmap.height) {
     p.canvas.width = bitmap.width; p.canvas.height = bitmap.height;
   }
@@ -365,6 +399,12 @@ function dismissPopup(id) {
   clearTimeout(p.timer);
   p.el.remove();
   popups.delete(id);
+  updateDismissAll();
+}
+
+function updateDismissAll() {
+  const b = $('#popupsClear');
+  if (b) b.hidden = popups.size < 2;
 }
 
 function keyCameraAlert(id, label, fresh) {
@@ -471,6 +511,7 @@ function wireMotion() {
   $('#optSound').onchange = e => { mcfg().sound = e.target.checked; saveConfig(); };
   $('#optScope').onchange = e => { mcfg().scope = e.target.value; saveConfig(); updateMotionStats(); };
   $('#btnTestAlert').onclick = () => { unlockAudio(); beep(); };
+  $('#popupsClear').onclick = () => { for (const id of [...popups.keys()]) dismissPopup(id); };
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   document.addEventListener('keydown', unlockAudio, { once: true });
   updateMotionButton();
