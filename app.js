@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = {
   key: {},          // cameraId -> true (key camera for big alerts)
   groups: [],       // [{id, name, cols, cams: [cameraId]}]
   refreshS: 2,
-  rotateS: 30,
+  rotateS: 10,
   tileMode: 'snap',
   rotating: false,
   activeGroup: 'all',
@@ -248,6 +248,7 @@ function renderTabs() {
 function selectGroup(id) {
   cfg.activeGroup = id; saveConfig();
   renderTabs(); renderGrid();
+  if (cfg.rotating) { const g = activeGroup(); if (g.cams.length) openSingle(g, 0); restartRotation(); }
 }
 
 function stopTiles() {
@@ -376,6 +377,8 @@ function closeSingle(keepOpen) {
   if (!keepOpen) $('#single').hidden = true;
 }
 
+function userStep(d) { stepSingle(d); restartRotation(); }
+
 function stepSingle(d) {
   if (!single) return;
   const { group, index } = single;
@@ -385,9 +388,16 @@ function stepSingle(d) {
 
 /* ---------- Rotation ---------- */
 
+/* Rotate = show each camera in the current group full screen, one after
+ * another, switching every cfg.rotateS seconds. */
 function setRotating(on) {
   cfg.rotating = !!on; saveConfig();
   $('#btnRotate').classList.toggle('on', cfg.rotating);
+  $('#singleRotate').classList.toggle('on', cfg.rotating);
+  if (cfg.rotating && !single && $('#setup').hidden && session) {
+    const g = activeGroup();
+    if (g.cams.length) openSingle(g, 0);
+  }
   restartRotation();
 }
 
@@ -395,12 +405,15 @@ function restartRotation() {
   clearInterval(rotateTimer); rotateTimer = null;
   if (!cfg.rotating) return;
   rotateTimer = setInterval(() => {
-    if (single || !$('#setup').hidden) return;
-    const gs = allGroups().filter(g => g.cams.length);
-    if (gs.length < 2) return;
-    const i = gs.findIndex(g => g.id === activeGroup().id);
-    selectGroup(gs[(i + 1) % gs.length].id);
+    if (!$('#setup').hidden || $('#viewer').hidden) return;
+    if (single) stepSingle(1);
+    else { const g = activeGroup(); if (g.cams.length) openSingle(g, 0); }
   }, cfg.rotateS * 1000);
+}
+
+function userCloseSingle() {
+  if (cfg.rotating) setRotating(false);
+  closeSingle();
 }
 
 /* ---------- Setup ---------- */
@@ -422,7 +435,7 @@ function closeSetup() {
   saveConfig();
   showScreen('viewer');
   renderTabs(); renderGrid();
-  restartRotation();
+  setRotating(cfg.rotating);
 }
 
 function renderGroupEditor() {
@@ -558,9 +571,10 @@ function wire() {
   $('#btnFull').onclick = toggleFullscreen;
   $('#btnSetup').onclick = openSetup;
   $('#btnDone').onclick = closeSetup;
-  $('#singleClose').onclick = () => closeSingle();
-  $('#singlePrev').onclick = () => stepSingle(-1);
-  $('#singleNext').onclick = () => stepSingle(1);
+  $('#singleClose').onclick = userCloseSingle;
+  $('#singleRotate').onclick = () => setRotating(!cfg.rotating);
+  $('#singlePrev').onclick = () => userStep(-1);
+  $('#singleNext').onclick = () => userStep(1);
   $('#btnAddGroup').onclick = () => {
     cfg.groups.push({ id: 'g' + Date.now().toString(36), name: 'New group', cols: 0, cams: [] });
     saveConfig(); renderGroupEditor();
@@ -584,9 +598,10 @@ function wire() {
   document.addEventListener('keydown', e => {
     if (e.target.matches('input, select, textarea') || $('#viewer').hidden) return;
     if (single) {
-      if (e.key === 'Escape') closeSingle();
-      else if (e.key === 'ArrowRight') stepSingle(1);
-      else if (e.key === 'ArrowLeft') stepSingle(-1);
+      if (e.key === 'Escape') userCloseSingle();
+      else if (e.key === 'ArrowRight') userStep(1);
+      else if (e.key === 'ArrowLeft') userStep(-1);
+      else if (e.key === 'r' || e.key === 'R') setRotating(!cfg.rotating);
       return;
     }
     const gs = allGroups();

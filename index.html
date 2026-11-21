@@ -35,7 +35,7 @@
   <header class="bar">
     <nav id="groupTabs" class="tabs"></nav>
     <div class="bar-right">
-      <button id="btnRotate" class="toggle" title="Rotate through groups (R)">⟳ Rotate</button>
+      <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳ Rotate</button>
       <button id="btnFull" title="Full screen (F)">⛶</button>
       <button id="btnSetup" title="Set up cameras and groups">⚙ Setup</button>
     </div>
@@ -52,6 +52,7 @@
     <span id="singleName" class="single-name"></span>
     <span id="singleBadge" class="badge" hidden></span>
     <span class="spacer"></span>
+    <button id="singleRotate" class="toggle" title="Rotate through this group (R)">⟳</button>
     <button id="singlePrev" title="Previous (←)">‹</button>
     <button id="singleNext" title="Next (→)">›</button>
     <button id="singleClose" title="Close (Esc)">✕</button>
@@ -86,13 +87,13 @@
             <option value="10">10 seconds</option>
           </select>
         </label>
-        <label>Rotate groups every
+        <label>Rotate: switch camera every
           <select id="optRotate">
+            <option value="5">5 seconds</option>
             <option value="10">10 seconds</option>
             <option value="15">15 seconds</option>
             <option value="30">30 seconds</option>
             <option value="60">1 minute</option>
-            <option value="120">2 minutes</option>
           </select>
         </label>
         <label>Grid tiles show
