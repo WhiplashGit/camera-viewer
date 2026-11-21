@@ -4,7 +4,7 @@
  * as a Stored File so every device shares one setup. */
 'use strict';
 
-const APP_VERSION = '20261121200740';
+const APP_VERSION = '20261121204438';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -127,6 +127,10 @@ function attachHls(video, id, quality) {
     const hls = new Hls({
       lowLatencyMode: true,
       liveSyncDurationCount: 2,
+      // Live video: keep only a few seconds buffered so memory doesn't grow over hours.
+      backBufferLength: 10,
+      maxBufferLength: 10,
+      maxMaxBufferLength: 20,
       xhrSetup: xhr => xhr.setRequestHeader('Authorization', 'Bearer ' + session.token),
     });
     hls.loadSource(url);
@@ -562,6 +566,7 @@ function openSetup() {
   renderGroupEditor();
   renderCamTable();
   if (typeof renderMotionSettings === 'function') renderMotionSettings();
+  if (typeof renderPowerSettings === 'function') renderPowerSettings();
 }
 
 function closeSetup() {
@@ -759,7 +764,7 @@ function wire() {
   let resizeT;
   window.addEventListener('resize', () => {
     clearTimeout(resizeT);
-    resizeT = setTimeout(() => { if (!$('#viewer').hidden && !single) renderGrid(); }, 400);
+    resizeT = setTimeout(() => { if (!$('#viewer').hidden && !single && !(typeof isLowPower === 'function' && isLowPower())) renderGrid(); }, 400);
   });
 }
 

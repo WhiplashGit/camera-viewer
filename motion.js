@@ -456,6 +456,7 @@ function updateDismissAll() {
 }
 
 function keyCameraAlert(id, label, fresh) {
+  if (typeof isLowPower === 'function' && isLowPower()) exitLowPower();
   const until = Date.now() + KEY_HOLD_MS;
   if (keyAlert && keyAlert.id === id) {
     keyAlert.until = until;

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121200740">
+<link rel="stylesheet" href="style.css?v=20261121204438">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -66,6 +66,9 @@
   </div>
 </div>
 
+<!-- Power saving -->
+<div id="sleep" class="sleep" hidden><div><div class="sleep-title">Shop Cameras</div><div id="sleepMsg"></div><div class="muted">Move the mouse or tap to wake.</div></div></div>
+
 <!-- Motion pop-ups -->
 <div id="popups" class="popups"><button id="popupsClear" class="popups-clear" hidden>Dismiss all</button></div>
 
@@ -104,6 +107,15 @@
             <option value="15">15 seconds</option>
             <option value="30">30 seconds</option>
             <option value="60">1 minute</option>
+          </select>
+        </label>
+        <label>Power saving after no activity
+          <select id="optIdle">
+            <option value="0">Never (shop TV)</option>
+            <option value="5">5 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
           </select>
         </label>
         <label>Grid tiles show
@@ -185,7 +197,8 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121200740"></script>
-<script src="motion.js?v=20261121200740"></script>
+<script src="app.js?v=20261121204438"></script>
+<script src="motion.js?v=20261121204438"></script>
+<script src="power.js?v=20261121204438"></script>
 </body>
 </html>
