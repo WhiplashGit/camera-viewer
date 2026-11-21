@@ -35,6 +35,7 @@
   <header class="bar">
     <nav id="groupTabs" class="tabs"></nav>
     <div class="bar-right">
+      <button id="btnMotion" class="toggle">○ Motion</button>
       <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳ Rotate</button>
       <button id="btnFull" title="Full screen (F)">⛶</button>
       <button id="btnSetup" title="Set up cameras and groups">⚙ Setup</button>
@@ -59,6 +60,9 @@
     <button id="singleClose" title="Close (Esc)">✕</button>
   </div>
 </div>
+
+<!-- Motion pop-ups -->
+<div id="popups" class="popups"></div>
 
 <!-- Setup -->
 <section id="setup" class="screen" hidden>
@@ -107,8 +111,33 @@
     </div>
 
     <div class="panel">
+      <h3>Motion pop-ups</h3>
+      <p class="muted">The page checks every camera and pops one up only when a person, vehicle or animal moves. Grass, leaves, shadows and lighting changes are ignored. Starred key cameras take over the full screen with a sound. This runs only while the page is open and changes nothing on the server.</p>
+      <div class="row-fields">
+        <label class="check"><input type="checkbox" id="optMotionOn"> Motion pop-ups on</label>
+        <label>Sensitivity
+          <select id="optSens">
+            <option value="high">High (catches small or distant movement)</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low (fewer pop-ups)</option>
+          </select>
+        </label>
+        <label>Check each camera every
+          <select id="optMotionEvery">
+            <option value="2">2 seconds</option>
+            <option value="3">3 seconds</option>
+            <option value="5">5 seconds</option>
+            <option value="10">10 seconds</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="optSound"> Sound for key cameras</label>
+        <button id="btnTestAlert" type="button">Test sound</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h3>Cameras</h3>
-      <p class="muted">Rename a camera, hide it, or star it as a key camera (front gate, front door) for the bigger alert.</p>
+      <p class="muted">Rename a camera, hide it, star it as a key camera (front gate, front door) for the bigger alert, or untick Motion to never get pop-ups from it.</p>
       <input id="camFilter" class="filter" placeholder="Filter cameras…" type="search">
       <div id="camTable" class="cam-table"></div>
     </div>
@@ -138,5 +167,6 @@
 </template>
 
 <script src="app.js"></script>
+<script src="motion.js"></script>
 </body>
 </html>

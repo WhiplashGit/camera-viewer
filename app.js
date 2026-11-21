@@ -207,6 +207,7 @@ async function startViewer() {
   renderTabs();
   renderGrid();
   setRotating(cfg.rotating);
+  if (typeof startMotion === 'function') startMotion();
   setInterval(refreshStatuses, 60000);
 }
 
@@ -259,6 +260,7 @@ function stopTiles() {
 }
 
 function stopAll() {
+  if (typeof stopMotion === 'function') stopMotion();
   stopTiles();
   closeSingle();
   clearInterval(rotateTimer); rotateTimer = null;
@@ -484,12 +486,14 @@ function restartRotation() {
   if (!cfg.rotating) return;
   rotateTimer = setInterval(() => {
     if (!$('#setup').hidden || $('#viewer').hidden) return;
+    if (typeof isKeyAlertActive === 'function' && isKeyAlertActive()) return;
     if (single) stepSingle(1);
     else { const g = activeGroup(); if (g.cams.length) openSingle(g, 0); }
   }, cfg.rotateS * 1000);
 }
 
 function userCloseSingle() {
+  if (typeof isKeyAlertActive === 'function' && isKeyAlertActive()) { endKeyAlert(true); return; }
   if (cfg.rotating) setRotating(false);
   closeSingle();
 }
@@ -507,6 +511,7 @@ function openSetup() {
   $('#syncMsg').textContent = '';
   renderGroupEditor();
   renderCamTable();
+  if (typeof renderMotionSettings === 'function') renderMotionSettings();
 }
 
 function closeSetup() {
@@ -514,6 +519,7 @@ function closeSetup() {
   showScreen('viewer');
   renderTabs(); renderGrid();
   setRotating(cfg.rotating);
+  if (typeof startMotion === 'function') startMotion();
 }
 
 function renderGroupEditor() {
@@ -586,7 +592,8 @@ function renderCamTable() {
     row.innerHTML = `
       <img alt="" loading="lazy">
       <div class="names"><input aria-label="Custom name"><span class="orig"></span></div>
-      <label title="Key camera: bigger alert"><input type="checkbox" class="ckey"> ★ Key</label>
+      <div class="flags"><label title="Pop up this camera when a person, vehicle or animal moves"><input type="checkbox" class="cmotion"> Motion</label>
+      <label title="Key camera: bigger alert"><input type="checkbox" class="ckey"> ★ Key</label></div>
       <label><input type="checkbox" class="chide"> Hide</label>`;
     const input = $('input[aria-label]', row);
     input.value = cfg.names[c.id] || '';
@@ -601,6 +608,10 @@ function renderCamTable() {
     const key = $('.ckey', row);
     key.checked = !!cfg.key[c.id];
     key.onchange = () => { if (key.checked) cfg.key[c.id] = true; else delete cfg.key[c.id]; saveConfig(); };
+    const mot = $('.cmotion', row);
+    cfg.noMotion = cfg.noMotion || {};
+    mot.checked = !cfg.noMotion[c.id];
+    mot.onchange = () => { if (mot.checked) delete cfg.noMotion[c.id]; else cfg.noMotion[c.id] = true; saveConfig(); };
     const hide = $('.chide', row);
     hide.checked = !!cfg.hidden[c.id];
     hide.onchange = () => {
