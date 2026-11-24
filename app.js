@@ -1,14 +1,14 @@
 /* Shop Cameras: a lightweight web viewer for a Wave VMS system.
  * Talks to the server's REST API (through Wave Cloud relay) with a bearer token.
- * Settings live in localStorage and can optionally be saved to the server
- * as a Stored File so every device shares one setup. */
+ * Settings live in this browser (localStorage). Everyone signs in with the
+ * same Wave account, so a server copy is saved per person, under a name and
+ * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_VERSION = '20261121220741';
+const APP_VERSION = '20261124041201';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
-const SERVER_CFG_PATH = 'camera-viewer-config.json';
 const SNAP_CONCURRENCY = 6;
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -183,18 +183,49 @@ function activeGroup() {
 function b64encode(str) { return btoa(String.fromCharCode(...new TextEncoder().encode(str))); }
 function b64decode(b64) { return new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))); }
 
-async function saveToServer() {
-  saveConfig();
-  await api('/rest/v2/storedFiles/' + SERVER_CFG_PATH, { method: 'PUT', json: { data: b64encode(JSON.stringify(cfg)) } });
+/* Personal server copies: one Stored File per person, "camera-viewer-<name>.json".
+ * The PIN only stops someone overwriting your copy by mistake from this app. */
+const LS_PROFILE = 'cv.profile';
+const slugOf = name => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+const profilePath = name => `camera-viewer-${slugOf(name)}.json`;
+async function pinHash(name, pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`cv:${slugOf(name)}:${pin}`));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function loadFromServer() {
-  const r = await api('/rest/v2/storedFiles/' + SERVER_CFG_PATH);
+async function readProfile(name) {
+  let r;
+  try { r = await api('/rest/v2/storedFiles/' + profilePath(name)); }
+  catch (e) { if (/404|not ?found/i.test(e.message)) return null; throw e; }
   let text = r.data;
   try { text = b64decode(r.data); } catch {}
-  const remote = JSON.parse(text);
-  cfg = Object.assign({}, DEFAULT_CONFIG, remote);
+  return JSON.parse(text);
+}
+
+async function saveToServer(name, pin) {
+  if (!slugOf(name)) throw new Error('Type your name first.');
+  if (!pin || pin.length < 4) throw new Error('Pick a PIN of at least 4 characters.');
+  const hash = await pinHash(name, pin);
+  const existing = await readProfile(name);
+  if (existing && existing.pinHash && existing.pinHash !== hash) {
+    throw new Error(`There is already a setup called "${existing.profile || name}" with a different PIN. Use your own PIN, or pick another name.`);
+  }
   saveConfig();
+  const copy = Object.assign({}, cfg);
+  delete copy.updatedAt;
+  const doc = { profile: name.trim(), pinHash: hash, savedAt: Date.now(), cfg: copy };
+  await api('/rest/v2/storedFiles/' + profilePath(name), { method: 'PUT', json: { data: b64encode(JSON.stringify(doc)) } });
+  store.set(LS_PROFILE, { name: name.trim() });
+}
+
+async function loadFromServer(name) {
+  if (!slugOf(name)) throw new Error('Type the name the setup was saved under.');
+  const doc = await readProfile(name);
+  if (!doc) throw new Error(`No setup called "${name.trim()}" is saved on the server.`);
+  cfg = Object.assign({}, DEFAULT_CONFIG, doc.cfg || {});
+  saveConfig();
+  store.set(LS_PROFILE, { name: doc.profile || name.trim() });
+  return doc;
 }
 
 /* ---------- Screens ---------- */
@@ -216,9 +247,6 @@ async function startViewer() {
   flash('Loading cameras…');
   try {
     await loadCameras();
-    if (!store.get(LS_CONFIG)) {
-      try { await loadFromServer(); } catch {}
-    }
   } catch (e) {
     if (!handleError(e)) flash('Could not load cameras: ' + e.message, 6000);
     return;
@@ -577,6 +605,7 @@ function openSetup() {
   $('#optRefresh').value = String(cfg.refreshS);
   $('#optRotate').value = String(cfg.rotateS);
   $('#optTileMode').value = cfg.tileMode;
+  $('#profName').value = store.get(LS_PROFILE)?.name || '';
   $('#whoami').textContent = `Signed in as ${session.user}` + (session.systemName ? ` to ${session.systemName}` : '');
   $('#syncMsg').textContent = '';
   renderGroupEditor();
@@ -760,13 +789,19 @@ function wire() {
   $('#optTileMode').onchange = e => { cfg.tileMode = e.target.value; saveConfig(); };
   $('#btnSaveServer').onclick = async () => {
     $('#syncMsg').textContent = 'Saving…';
-    try { await saveToServer(); $('#syncMsg').textContent = 'Saved to server.'; }
-    catch (e) { if (!handleError(e)) $('#syncMsg').textContent = 'Could not save: ' + e.message; }
+    try {
+      await saveToServer($('#profName').value, $('#profPin').value);
+      $('#profPin').value = '';
+      $('#syncMsg').textContent = `Saved your copy as "${$('#profName').value.trim()}". Only you (with your PIN) can replace it.`;
+    } catch (e) { if (!handleError(e)) $('#syncMsg').textContent = e.message; }
   };
   $('#btnLoadServer').onclick = async () => {
     $('#syncMsg').textContent = 'Loading…';
-    try { await loadFromServer(); renderGroupEditor(); renderCamTable(); openSetup(); $('#syncMsg').textContent = 'Loaded from server.'; }
-    catch (e) { if (!handleError(e)) $('#syncMsg').textContent = /404/.test(e.message) ? 'Nothing saved on the server yet.' : 'Could not load: ' + e.message; }
+    try {
+      const doc = await loadFromServer($('#profName').value);
+      renderGroupEditor(); renderCamTable(); openSetup();
+      $('#syncMsg').textContent = `Loaded "${doc.profile}" (saved ${new Date(doc.savedAt).toLocaleString()}) onto this device.`;
+    } catch (e) { if (!handleError(e)) $('#syncMsg').textContent = e.message; }
   };
   $('#btnLogout').onclick = logout;
 

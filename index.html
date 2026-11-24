@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261121220741">
+<link rel="stylesheet" href="style.css?v=20261124041201">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -171,7 +171,8 @@
             <option value="10">10 seconds</option>
           </select>
         </label>
-        <label class="check"><input type="checkbox" id="optSound"> Sound for key cameras</label>
+        <label class="check"><input type="checkbox" id="optSound"> Sounds on</label>
+        <label class="check"><input type="checkbox" id="optTakeover"> Starred cameras take over the whole screen</label>
         <button id="btnTestAlert" type="button">Test sound</button>
         <label class="check"><input type="checkbox" id="optNotify"> Desktop notifications when this tab isn't in front</label>
         <span id="notifyMsg" class="muted"></span>
@@ -204,12 +205,17 @@
 
     <div class="panel">
       <h3>Settings storage</h3>
-      <p class="muted">Settings save on this device automatically. Save them to the camera server to use the same setup on every laptop, phone and TV.</p>
-      <div class="row-btns">
-        <button id="btnSaveServer">Save to server</button>
-        <button id="btnLoadServer">Load from server</button>
-        <span id="syncMsg" class="muted"></span>
+      <p class="muted">Everything you change here (groups, names, stars, sounds, watch areas) is saved <b>only in this browser on this device</b>. Other people using this page have their own settings, and nothing here changes what anyone sees in the Wave app.</p>
+      <p class="muted">To use your setup on another laptop, phone or TV, save a personal copy to the camera server under your name with a PIN, then load it on the other device by typing the same name. Each person gets their own copy, and nobody can replace yours without your PIN. Loading copies a setup onto this device only.</p>
+      <div class="row-fields">
+        <label>Your name <input id="profName" type="text" autocomplete="off" maxlength="40" placeholder="e.g. Jon"></label>
+        <label>PIN (to save) <input id="profPin" type="password" autocomplete="new-password" maxlength="20" placeholder="4 or more"></label>
       </div>
+      <div class="row-btns">
+        <button id="btnSaveServer">Save my copy to server</button>
+        <button id="btnLoadServer">Load this name onto this device</button>
+      </div>
+      <p id="syncMsg" class="muted"></p>
       <h3 class="mt">Account</h3>
       <div class="row-btns">
         <span id="whoami" class="muted"></span>
@@ -226,10 +232,10 @@
   </div>
 </template>
 
-<script src="app.js?v=20261121220741"></script>
-<script src="history-db.js?v=20261121220741"></script>
-<script src="motion.js?v=20261121220741"></script>
-<script src="power.js?v=20261121220741"></script>
-<script src="zones.js?v=20261121220741"></script>
+<script src="app.js?v=20261124041201"></script>
+<script src="history-db.js?v=20261124041201"></script>
+<script src="motion.js?v=20261124041201"></script>
+<script src="power.js?v=20261124041201"></script>
+<script src="zones.js?v=20261124041201"></script>
 </body>
 </html>

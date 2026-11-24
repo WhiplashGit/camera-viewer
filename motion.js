@@ -11,7 +11,7 @@
  * visibleCams, openSingle, closeSingle, single, handleError, saveConfig, $, $$. */
 'use strict';
 
-const MOTION_DEFAULTS = { enabled: true, sensitivity: 'normal', sound: true, intervalS: 3, scope: 'key' };
+const MOTION_DEFAULTS = { enabled: true, sensitivity: 'normal', sound: true, intervalS: 3, scope: 'key', takeover: false };
 const TARGETS = {
   person: 'Person', bicycle: 'Bicycle', motorcycle: 'Motorcycle', car: 'Car', truck: 'Truck',
   bus: 'Bus', dog: 'Dog', cat: 'Cat', horse: 'Horse', cow: 'Animal', sheep: 'Animal', bear: 'Animal',
@@ -32,7 +32,7 @@ const NOISE_ALPHA = 0.04;                 // how fast a cell learns it is noisy 
 const NOISY = 0.35;                       // cells changing this often are treated as background
 const LOG_MAX = 40;                 // don't re-alert the same camera faster than this
 const KEY_HOLD_MS = 5 * 60 * 1000;       // key-camera full-screen alert stays until dismissed (✕ / Esc), or 5 minutes after the last detection
-const maxPopups = () => (Math.min(window.innerWidth, window.innerHeight) < 600 ? 2 : 4);
+const maxPopups = () => 10;               // newest is shown picture-in-picture, older ones stack as small cards
 
 let motionModel = null;
 let motionLoading = null;
@@ -213,6 +213,8 @@ async function diffCamera(id) {
     if (changed[i] && st.noise[i] < NOISY) novel++;
     st.noise[i] += NOISE_ALPHA * (changed[i] - st.noise[i]);
   }
+  st.changedPrev = st.changed || null;
+  st.changed = changed;
   const sens = SENS[mcfg().sensitivity] || SENS.normal;
   const score = novel / grey.length;
   if (!st.peak || score > st.peak.score || Date.now() - st.peak.t > 60000) st.peak = { score, t: Date.now() };
@@ -228,6 +230,23 @@ function near(a, b) {
   const ax = a[0] + a[2] / 2, ay = a[1] + a[3] / 2, bx = b[0] + b[2] / 2, by = b[1] + b[3] / 2;
   const size = Math.max(a[2], a[3], b[2], b[3]);
   return Math.hypot(ax - bx, ay - by) <= Math.max(4 * size, 80);
+}
+
+const VEHICLES = new Set(['Car', 'Truck', 'Bus', 'Motorcycle']);
+
+/* Share of the motion-grid cells inside a box (detector pixels) that changed in
+ * the last two snapshots. A parked car scores about 0. */
+function movementIn(st, box, W, H) {
+  if (!st.changed) return 1;
+  const x0 = Math.max(0, Math.floor(box[0] / W * DIFF_W)), x1 = Math.min(DIFF_W - 1, Math.floor((box[0] + box[2]) / W * DIFF_W));
+  const y0 = Math.max(0, Math.floor(box[1] / H * DIFF_H)), y1 = Math.min(DIFF_H - 1, Math.floor((box[1] + box[3]) / H * DIFF_H));
+  let n = 0, tot = 0;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const i = y * DIFF_W + x;
+    tot++;
+    if (st.changed[i] || (st.changedPrev && st.changedPrev[i])) n++;
+  }
+  return tot ? (n >= 2 ? n / tot : 0) : 0;
 }
 
 function iou(a, b) {
@@ -254,12 +273,15 @@ async function detectCamera({ id, routine }) {
   // or flag passes over them, so they only count if they really move away.
   // Anything new or moved must show up in two checks in a row before it pops up,
   // which filters out one-off misreads.
-  st.known = (st.known || []).filter(k => now - k.lastSeen < 5 * 60 * 1000);
+  // Parked vehicles are remembered for 30 minutes, so a car that the AI misses
+  // for a while isn't treated as "new" when it's spotted again.
+  st.known = (st.known || []).filter(k => now - k.lastSeen < (VEHICLES.has(k.label) ? 30 : 5) * 60 * 1000);
   const pending = (st.pending || []).filter(p => now - p.t < 8000);
   st.pending = [];
   const firstLook = !st.seenOnce;
   st.seenOnce = true;
   const hits = [];
+  const parked = new Set();
   const W = big.width, H = big.height;
   const ignored = (cfg.ignoreSpots && cfg.ignoreSpots[id]) || [];
   for (const d of dets) {
@@ -268,6 +290,14 @@ async function detectCamera({ id, routine }) {
     const box = d.bbox;
     const norm = [box[0] / W, box[1] / H, box[2] / W, box[3] / H];
     if (ignored.some(s => s.label === label && iou(s.box, norm) > 0.3)) continue;   // marked "not real" by you
+    // A vehicle only counts if the picture actually changed where it is.
+    // This is what keeps parked cars quiet when people or shadows move nearby.
+    if (VEHICLES.has(label) && movementIn(st, box, W, H) < 0.06) {
+      let k = st.known.find(k => k.label === label && iou(k.bbox, box) > 0.15);
+      if (k) { k.bbox = box; k.lastSeen = now; } else st.known.push({ label, bbox: box, lastSeen: now });
+      parked.add(label);
+      continue;
+    }
     // Confirmed if the same kind of object was "possible" on the last check
     // anywhere nearby. A walking person can move more than their own width
     // between checks, so this compares distance, not overlap.
@@ -294,7 +324,7 @@ async function detectCamera({ id, routine }) {
     if (st.pending.length) { logEvent(id, `Possible ${[...new Set(st.pending.map(p => p.label))].join(', ')}, double-checking`); return; }
     if (routine && !firstLook) return;   // quiet routine check: don't fill the log
     const seen = [...new Set(dets.map(d => TARGETS[d.class]).filter(Boolean))];
-    logEvent(id, seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : firstLook ? 'Started watching' : 'Movement checked, no person, vehicle or animal');
+    logEvent(id, parked.size && seen.every(s => parked.has(s)) ? `Parked ${[...parked].join(', ')} ignored (not moving)` : seen.length ? `AI saw ${seen.join(', ')}, but it wasn't moving` : firstLook ? 'Started watching' : 'Movement checked, no person, vehicle or animal');
     return;
   }
   // Remember where the confirmed objects are now, so they only re-alert if they keep moving.
@@ -378,7 +408,7 @@ function onDetection(id, hits, bitmap) {
   markTileMotion(id);
   if (fresh && mcfg().sound) playSound(soundFor(id));
   if (fresh) notifyDesktop(id, label);
-  if (cfg.key[id]) keyCameraAlert(id, label, fresh);
+  if (cfg.key[id] && mcfg().takeover) keyCameraAlert(id, label, fresh);
   showPopup(id, label, hits, bitmap);
 }
 
@@ -438,10 +468,12 @@ function showPopup(id, label, hits, bitmap) {
       openSingle({ id: 'motion', name: displayName(id), cams: [id] }, 0, { badge: label });
       dismissPopup(id);
     };
-    box.prepend(el);
     p = { el, canvas: $('canvas', el) };
     popups.set(id, p);
   }
+  // Newest (or just re-triggered) goes to the top, right under "Dismiss all".
+  const clearBtn = $('#popupsClear');
+  if (clearBtn.nextSibling !== p.el) box.insertBefore(p.el, clearBtn.nextSibling);
   $('.popup-name', p.el).textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
   $('.popup-label', p.el).textContent = label;
   p.hits = hits;
@@ -486,7 +518,7 @@ function dismissPopup(id) {
 
 function updateDismissAll() {
   const b = $('#popupsClear');
-  if (b) b.hidden = popups.size < 2;
+  if (b) { b.hidden = popups.size < 2; b.textContent = `Dismiss all (${popups.size})`; }
 }
 
 function keyCameraAlert(id, label, fresh) {
@@ -675,6 +707,7 @@ function renderMotionSettings() {
   $('#optSens').value = m.sensitivity;
   $('#optMotionEvery').value = String(m.intervalS);
   $('#optSound').checked = m.sound;
+  $('#optTakeover').checked = !!m.takeover;
   renderCustomSounds();
   $('#optNotify').checked = !!m.notify && 'Notification' in window && Notification.permission === 'granted';
   $('#optScope').value = m.scope;
@@ -742,6 +775,7 @@ function wireMotion() {
   $('#optSens').onchange = e => { mcfg().sensitivity = e.target.value; saveConfig(); };
   $('#optMotionEvery').onchange = e => { mcfg().intervalS = +e.target.value; saveConfig(); };
   $('#optSound').onchange = e => { mcfg().sound = e.target.checked; saveConfig(); };
+  $('#optTakeover').onchange = e => { mcfg().takeover = e.target.checked; saveConfig(); if (!e.target.checked && keyAlert) endKeyAlert(true); };
   $('#optScope').onchange = e => { mcfg().scope = e.target.value; saveConfig(); updateMotionStats(); };
   $('#btnTestAlert').onclick = () => { unlockAudio(); beep(); };
   $('#optNotify').onchange = async e => {

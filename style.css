@@ -119,8 +119,9 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1
 #btnTestAlert { align-self: end; }
 
 /* Motion pop-ups */
-.popups { position: fixed; right: 12px; bottom: 12px; z-index: 25; display: flex; flex-direction: column-reverse; gap: 8px;
-  width: min(380px, 42vw); pointer-events: none; }
+.popups { position: fixed; right: 12px; top: 64px; bottom: 12px; z-index: 25; display: flex; flex-direction: column; gap: 6px;
+  width: min(360px, 40vw); pointer-events: none; overflow-y: auto; scrollbar-width: none; }
+.popups::-webkit-scrollbar { display: none; }
 .popup { pointer-events: auto; background: #000; border: 3px solid var(--warn); border-radius: 10px; overflow: hidden;
   cursor: pointer; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
 .popup.key { border-color: var(--alert); }
@@ -153,6 +154,7 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .single-top { padding-top: max(10px, env(safe-area-inset-top)); padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right)); }
 .popups { bottom: max(12px, env(safe-area-inset-bottom)); right: max(12px, env(safe-area-inset-right)); }
+.popups:not(:has(.popup)) { bottom: auto; }
 
 @media (hover: none) {
   .tile { border-width: 2px; }
@@ -170,7 +172,7 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   .single-top button { min-width: 44px; min-height: 44px; }
   .single-top #singlePrev, .single-top #singleNext { display: none; }
   .single-name { font-size: 18px; }
-  .popups { width: min(250px, 62vw); gap: 6px; }
+  .popups { width: min(250px, 62vw); gap: 5px; top: 56px; }
   .popup-bar { font-size: 13px; padding: 4px 6px; }
   .setup-body { padding: 10px; gap: 10px; }
   .panel { padding: 12px; }
@@ -236,3 +238,16 @@ summary { cursor: pointer; font-weight: 600; }
 .cplay { padding: 4px 8px; font-size: 12px; }
 .upload-btn { display: inline-block; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
 .upload-btn:hover { border-color: var(--accent); }
+
+/* Pop-up stack: newest picture-in-picture, older ones as compact cards */
+.popup { flex: none; }
+.popup.key { animation: keyPulse 1.2s ease-in-out infinite; }
+@keyframes keyPulse { 50% { border-color: rgba(255,59,48,.35); box-shadow: 0 0 0 4px rgba(255,59,48,.35), 0 8px 30px rgba(0,0,0,.6); } }
+.popup ~ .popup { display: grid; grid-template-columns: 96px 1fr; align-items: center; border-width: 2px; }
+.popup ~ .popup canvas { width: 96px; height: 54px; object-fit: cover; }
+.popup ~ .popup .popup-bar { flex-wrap: wrap; row-gap: 0; padding: 3px 6px; font-size: 12px; background: none; }
+.popup ~ .popup .popup-bar .spacer { display: none; }
+.popup ~ .popup .popup-name { flex: 1 1 100%; }
+.popup ~ .popup .popup-ignore { padding: 1px 6px; font-size: 11px; }
+.popup ~ .popup .popup-x { padding: 1px 6px; margin-left: auto; }
+.popups-clear { flex: none; }
