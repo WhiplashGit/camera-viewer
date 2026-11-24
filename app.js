@@ -5,7 +5,8 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_VERSION = '20261124051530';
+const APP_RELEASE = '1.12';           // visible version number, set by bump.sh from releases.json
+const APP_VERSION = '20261124052322';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -824,6 +825,7 @@ function wire() {
   $('#btnFull').hidden = !(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   $('#btnCols').onclick = cyclePhoneCols;
   wireSwipe();
+  for (const el of $$('.ver-tag')) el.textContent = 'v' + APP_RELEASE;
   $('#btnSetup').onclick = openSetup;
   $('#btnHelp').onclick = $('#btnHelp2').onclick = () => window.open('help.html', 'cv-help');
   $('#btnHistory').onclick = openHistoryWindow;

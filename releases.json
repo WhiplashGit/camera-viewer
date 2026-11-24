@@ -1,0 +1,124 @@
+[
+  {
+    "version": "1.12",
+    "title": "Version number and release notes",
+    "items": [
+      "New: the version number now shows on the camera screen (top bar on computers) and in Setup. Click it to see what changed.",
+      "New: \"What's new\" in Help lists every update with its date and time and what it added or fixed."
+    ],
+    "date": "2026-11-24T05:23:22Z"
+  },
+  {
+    "version": "1.11",
+    "date": "2026-11-24T05:15:00Z",
+    "title": "Owner tools",
+    "items": [
+      "New: Setup → Owner tools, unlocked with an owner passphrase, can delete anyone's saved setup (whatever its PIN), old files and suggestions.",
+      "New: the owner can mark suggestions Accepted or Not accepted, with a note."
+    ]
+  },
+  {
+    "version": "1.10",
+    "date": "2026-11-24T05:07:00Z",
+    "title": "Suggest a feature",
+    "items": [
+      "New: 💡 Suggest button. Send an idea, change or problem; everyone can see the list.",
+      "New: each suggestion shows Pending, Accepted or Not accepted."
+    ]
+  },
+  {
+    "version": "1.9",
+    "date": "2026-11-24T04:56:00Z",
+    "title": "Help and FAQ",
+    "items": [
+      "New: ? Help page with how-tos and answers to common questions."
+    ]
+  },
+  {
+    "version": "1.8",
+    "date": "2026-11-24T04:53:00Z",
+    "title": "Emoji pop-up pictures",
+    "items": [
+      "New: 18 built-in emoji (🚨 👀 🦖 …) to choose as a camera's pop-up picture."
+    ]
+  },
+  {
+    "version": "1.7",
+    "date": "2026-11-24T04:42:00Z",
+    "title": "Easier to find watch areas",
+    "items": [
+      "Fix: watch areas now show right under their camera in Setup → Cameras, where you can rename them, add them to a group, edit or remove them."
+    ]
+  },
+  {
+    "version": "1.6",
+    "date": "2026-11-24T04:17:00Z",
+    "title": "Right-click menu, area views, recorded sounds and more",
+    "items": [
+      "New: right-click a camera (long-press on Android) to change its name, star, motion, sound, picture or watch area.",
+      "New: a watch area becomes its own zoomed \"· area\" view; the full view stays too.",
+      "New: record your own alert sound with the microphone.",
+      "New: fun pop-up pictures that appear when a camera has motion.",
+      "New: put the menu bar at the top, bottom, left or right."
+    ]
+  },
+  {
+    "version": "1.5",
+    "date": "2026-11-24T04:12:00Z",
+    "title": "Personal setups, parked cars, stacked pop-ups",
+    "items": [
+      "Change: settings are personal to each browser. Save your own copy to the server under your name and a PIN; nobody else's setup loads automatically.",
+      "Fix: parked cars no longer trigger pop-ups unless they actually move.",
+      "Change: pop-ups stack on the right (newest bigger, up to 10) with Dismiss all; starred cameras pulse red instead of taking over the screen."
+    ]
+  },
+  {
+    "version": "1.4",
+    "date": "2026-11-21T22:07:00Z",
+    "title": "Motion history and sounds",
+    "items": [
+      "New: 🕘 History window with 14 days of motion pop-ups.",
+      "New: desktop notifications when the page is in the background.",
+      "New: choose a sound per camera, or upload your own."
+    ]
+  },
+  {
+    "version": "1.3",
+    "date": "2026-11-21T21:12:00Z",
+    "title": "Watch areas",
+    "items": [
+      "New: draw a watch area on a camera so motion only looks there, with a zoomed view for the AI."
+    ]
+  },
+  {
+    "version": "1.2",
+    "date": "2026-11-21T20:45:00Z",
+    "title": "Power saving",
+    "items": [
+      "New: after a while with no activity the screen goes dark and video stops, while motion watching keeps running."
+    ]
+  },
+  {
+    "version": "1.1",
+    "date": "2026-11-21T20:07:00Z",
+    "title": "Better motion detection",
+    "items": [
+      "Fix: fewer false alarms from things that stay put, like a flag's shadow or a hydrant.",
+      "New: Not real button to ignore a spot.",
+      "Fix: people walking past are caught more reliably.",
+      "New: \"See what the AI sees\" test in Setup."
+    ]
+  },
+  {
+    "version": "1.0",
+    "date": "2026-11-21T19:36:00Z",
+    "title": "First release",
+    "items": [
+      "Sign in through Wave Cloud, pick, rename and hide cameras, and build groups.",
+      "Rotate through a group's cameras full screen.",
+      "Phone-friendly layout.",
+      "Motion pop-ups for people, vehicles and animals on starred cameras.",
+      "The page updates itself when a new version is published."
+    ]
+  }
+]

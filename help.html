@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d10">
 <title>Help · Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261124051530">
+<link rel="stylesheet" href="style.css?v=20261124052322">
 <style>
   body { min-height: 100%; }
   .help { max-width: 760px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
@@ -24,6 +24,9 @@
   .help details[open] summary { margin-bottom: 6px; }
   .help .note { background: var(--panel); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 6px; }
   .help a { color: var(--accent); }
+  .rel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
+  .rel h3 { margin: 0 0 2px; }
+  .rel ul { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -35,7 +38,7 @@
   <h1>Shop Cameras: how it works</h1>
   <p class="muted">A light, simple way to watch the community cameras in your browser, on a laptop, phone or TV.</p>
   <nav class="toc">
-    <a href="#start">Getting started</a><a href="#groups">Groups</a><a href="#rotate">Rotate</a>
+    <a href="#releases">What's new</a>    <a href="#start">Getting started</a><a href="#groups">Groups</a><a href="#rotate">Rotate</a>
     <a href="#motion">Motion pop-ups</a><a href="#areas">Watch areas</a><a href="#menu">Right-click menu</a>
     <a href="#sounds">Sounds &amp; pictures</a><a href="#history">History</a><a href="#layout">Layout</a><a href="#faq">FAQ</a>
   </nav>
@@ -100,6 +103,10 @@
     <li><b>⛶</b> or <kbd>F</kbd> goes full screen.</li>
   </ul>
 
+  <h2 id="releases">What's new</h2>
+  <p class="muted">Every update, newest first. Times are Mountain time. The version you're running is shown on the camera screen and in Setup.</p>
+  <div id="relList" class="rel-list">Loading…</div>
+
   <h2 id="faq">FAQ</h2>
   <details open><summary>Where are my settings saved? Can someone else mess up my groups?</summary>
     <p>Everything you change (groups, names, stars, sounds, watch areas, pictures) is saved <b>only in your browser on that device</b>. Other people using this page have their own settings, so their changes can't touch yours. Nothing here changes what anyone sees in the Wave app.</p>
@@ -135,6 +142,21 @@
     <p>Snapshot tiles and motion on starred cameras are light. Live video tiles and watching all cameras use more. If the fan spins up, switch tiles to Snapshots and watch only starred cameras.</p>
   </details>
 </main>
+<script>
+fetch('releases.json?t=' + Date.now()).then(r => r.json()).then(list => {
+  const box = document.getElementById('relList'); box.textContent = '';
+  for (const r of list) {
+    const d = r.date ? new Date(r.date).toLocaleString('en-US', { timeZone: 'America/Denver', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' MT' : 'Coming soon';
+    const sec = document.createElement('div'); sec.className = 'rel';
+    const h = document.createElement('h3'); h.textContent = `v${r.version} · ${r.title}`;
+    const m = document.createElement('div'); m.className = 'muted'; m.textContent = d;
+    const ul = document.createElement('ul');
+    for (const it of r.items) { const li = document.createElement('li'); li.textContent = it; ul.appendChild(li); }
+    sec.append(h, m, ul); box.appendChild(sec);
+  }
+  if (location.hash === '#releases') document.getElementById('releases').scrollIntoView();
+}).catch(() => { document.getElementById('relList').textContent = 'Could not load the release notes.'; });
+</script>
 <script>document.getElementById('back').onclick = () => { if (window.opener) window.close(); else location.href = './'; };</script>
 </body>
 </html>
