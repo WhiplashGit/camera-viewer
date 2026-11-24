@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261124045635">
+<link rel="stylesheet" href="style.css?v=20261124050338">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -43,6 +43,7 @@
       <button id="btnRotate" class="toggle" title="Show each camera in this group full screen, one after another (R)">⟳<span class="lbl"> Rotate</span></button>
       <button id="btnFull" title="Full screen (F)">⛶</button>
       <button id="btnHistory" title="Motion history (opens a new tab)">🕘<span class="lbl"> History</span></button>
+      <button id="btnSuggest" title="Suggest a feature or change">💡<span class="lbl"> Suggest</span></button>
       <button id="btnHelp" title="Help and FAQ">?<span class="lbl"> Help</span></button>
       <button id="btnSetup" title="Set up cameras and groups">⚙<span class="lbl"> Setup</span></button>
     </div>
@@ -86,6 +87,26 @@
   </div>
 </div>
 
+<!-- Suggestions -->
+<div id="suggest" class="zone-ed" hidden>
+  <div class="zone-card sg-card">
+    <div class="zone-head"><b>Suggest a feature or change</b><span class="spacer"></span><button id="sgClose" type="button">Close</button></div>
+    <p class="muted">Ideas, changes or problems: everything sent here is saved on the camera server and read when the app is next worked on. Everyone using this page can see the list below.</p>
+    <form id="sgForm" class="sg-form">
+      <div class="row-fields">
+        <label>Your name (optional) <input id="sgName" type="text" maxlength="40" autocomplete="off"></label>
+        <label>Type
+          <select id="sgKind"><option>New feature</option><option>Change</option><option>Problem</option><option>Other</option></select>
+        </label>
+      </div>
+      <textarea id="sgText" rows="4" maxlength="2000" placeholder="What would make this better? e.g. &quot;Show the gate camera bigger when a car arrives&quot;"></textarea>
+      <div class="row-btns"><button id="sgSend" type="submit" class="primary">Send suggestion</button><span id="sgMsg" class="muted"></span></div>
+    </form>
+    <h3 class="mt">Suggestions so far</h3>
+    <div id="sgList" class="sg-list"></div>
+  </div>
+</div>
+
 <!-- Power saving -->
 <div id="sleep" class="sleep" hidden><div><div class="sleep-title">Shop Cameras</div><div id="sleepMsg"></div><div class="muted">Move the mouse or tap to wake.</div></div></div>
 
@@ -97,6 +118,7 @@
   <header class="bar">
     <h2>Setup</h2>
     <div class="bar-right">
+      <button id="btnSuggest2" type="button">💡 Suggest</button>
       <button id="btnHelp2" type="button">? Help</button>
       <button id="btnDone" class="primary">Done</button>
     </div>
@@ -251,11 +273,12 @@
   </div>
 </template>
 
-<script src="app.js?v=20261124045635"></script>
-<script src="history-db.js?v=20261124045635"></script>
-<script src="motion.js?v=20261124045635"></script>
-<script src="power.js?v=20261124045635"></script>
-<script src="zones.js?v=20261124045635"></script>
-<script src="extras.js?v=20261124045635"></script>
+<script src="app.js?v=20261124050338"></script>
+<script src="history-db.js?v=20261124050338"></script>
+<script src="motion.js?v=20261124050338"></script>
+<script src="power.js?v=20261124050338"></script>
+<script src="zones.js?v=20261124050338"></script>
+<script src="extras.js?v=20261124050338"></script>
+<script src="suggest.js?v=20261124050338"></script>
 </body>
 </html>

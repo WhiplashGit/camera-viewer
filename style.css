@@ -301,3 +301,12 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .flash-row { animation: flashRow 1.6s ease-out; }
 @keyframes flashRow { from { background: rgba(64,156,255,.35); } to { background: transparent; } }
 .fun-emoji { font-size: min(40vmin, 260px); line-height: 1.1; padding: 0 20px; }
+
+/* Suggestions */
+.sg-card { width: min(720px, 100%); display: grid; gap: 10px; }
+.sg-form { display: grid; gap: 10px; }
+.sg-form textarea { width: 100%; font: inherit; color: inherit; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+.sg-list { display: grid; gap: 8px; }
+.sg-item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.sg-head { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.sg-text { white-space: pre-wrap; word-break: break-word; }
