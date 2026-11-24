@@ -300,3 +300,4 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .area-row select { padding: 4px 6px; font-size: 13px; }
 .flash-row { animation: flashRow 1.6s ease-out; }
 @keyframes flashRow { from { background: rgba(64,156,255,.35); } to { background: transparent; } }
+.fun-emoji { font-size: min(40vmin, 260px); line-height: 1.1; padding: 0 20px; }

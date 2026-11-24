@@ -140,6 +140,16 @@ async function toggleRecording() {
 
 const customPics = new Map();   // id -> {id, name, blob, url}
 
+/* Built-in emoji pictures, drawn with the device's own emoji font (nothing to download). */
+const EMOJI_PICS = [
+  ['🚨', 'Siren'], ['👀', 'Eyes'], ['🕵️', 'Detective'], ['👋', 'Wave hello'], ['🔔', 'Bell'],
+  ['📦', 'Package'], ['🚗', 'Car'], ['🚚', 'Truck'], ['🐶', 'Dog'], ['🐱', 'Cat'],
+  ['🦌', 'Deer'], ['🐻', 'Bear'], ['👻', 'Ghost'], ['🤠', 'Cowboy'], ['🦖', 'Dinosaur'],
+  ['🛸', 'UFO'], ['🎉', 'Party'], ['🍕', 'Pizza'],
+];
+const emojiOf = pid => (typeof pid === 'string' && pid.startsWith('e:')) ? pid.slice(2) : null;
+const picExists = pid => !!pid && (emojiOf(pid) ? EMOJI_PICS.some(([e]) => e === emojiOf(pid)) : customPics.has(pid));
+
 async function loadPics() {
   if (typeof HistoryDB === 'undefined' || !HistoryDB.picsAll) return;
   try { for (const p of await HistoryDB.picsAll()) customPics.set(p.id, p); } catch (e) { console.error(e); }
@@ -149,11 +159,17 @@ function picUrl(p) { return p.url || (p.url = URL.createObjectURL(p.blob)); }
 
 function fillPicSelect(sel, id, always) {
   sel.textContent = '';
-  if (!customPics.size && !always) { sel.hidden = true; return; }
   sel.hidden = false;
-  const none = document.createElement('option'); none.value = ''; none.textContent = customPics.size ? '🖼 No picture' : '🖼 Upload one in Setup first'; sel.appendChild(none);
-  for (const p of customPics.values()) { const o = document.createElement('option'); o.value = p.id; o.textContent = '🖼 ' + p.name; sel.appendChild(o); }
-  sel.value = (cfg.pictures && customPics.has(cfg.pictures[id])) ? cfg.pictures[id] : '';
+  const none = document.createElement('option'); none.value = ''; none.textContent = '🖼 No picture'; sel.appendChild(none);
+  if (customPics.size) {
+    const yours = document.createElement('optgroup'); yours.label = 'Your pictures';
+    for (const p of customPics.values()) { const o = document.createElement('option'); o.value = p.id; o.textContent = '🖼 ' + p.name; yours.appendChild(o); }
+    sel.appendChild(yours);
+  }
+  const em = document.createElement('optgroup'); em.label = 'Emoji';
+  for (const [ch, name] of EMOJI_PICS) { const o = document.createElement('option'); o.value = 'e:' + ch; o.textContent = ch + ' ' + name; em.appendChild(o); }
+  sel.appendChild(em);
+  sel.value = (cfg.pictures && picExists(cfg.pictures[id])) ? cfg.pictures[id] : '';
   sel.onchange = () => {
     cfg.pictures = cfg.pictures || {};
     if (sel.value) cfg.pictures[id] = sel.value; else delete cfg.pictures[id];
@@ -213,17 +229,20 @@ function renderPics() {
 let funTimer = null;
 function showFunPicture(id, label, preview) {
   const pid = cfg.pictures && cfg.pictures[id];
-  const p = pid && customPics.get(pid);
-  if (!p) return;
+  if (!picExists(pid)) return;
+  const emoji = emojiOf(pid), p = emoji ? null : customPics.get(pid);
   let el = $('#funPic');
   if (!el) {
     el = document.createElement('div');
     el.id = 'funPic'; el.className = 'fun-pic';
-    el.innerHTML = '<img alt=""><div class="fun-cap"></div>';
+    el.innerHTML = '<img alt=""><div class="fun-emoji"></div><div class="fun-cap"></div>';
     el.onclick = () => { el.hidden = true; };
     document.body.appendChild(el);
   }
-  $('img', el).src = picUrl(p);
+  $('img', el).hidden = !!emoji;
+  if (p) $('img', el).src = picUrl(p);
+  $('.fun-emoji', el).hidden = !emoji;
+  $('.fun-emoji', el).textContent = emoji || '';
   $('.fun-cap', el).textContent = `${displayName(id)}: ${label}`;
   el.hidden = false;
   el.classList.remove('in'); void el.offsetWidth; el.classList.add('in');
