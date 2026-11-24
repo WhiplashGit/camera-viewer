@@ -5,7 +5,7 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_VERSION = '20261124041711';
+const APP_VERSION = '20261124044254';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -746,7 +746,44 @@ function renderCamTable() {
     };
     lazyThumb($('img', row), c.id);
     box.appendChild(row);
+    if (zoneOf(c.id) && !(cfg.zoomView && cfg.zoomView[c.id])) box.appendChild(areaRow(c.id));
   }
+}
+
+/* The zoomed watch-area view of a camera, listed right under the camera. */
+function areaRow(cid) {
+  const aid = cid + AREA;
+  const row = document.createElement('div');
+  row.className = 'cam-row area-row';
+  row.innerHTML = `
+    <img alt="" loading="lazy">
+    <div class="names"><input aria-label="Name for the area view"><span class="orig"></span></div>
+    <span class="area-groups"><select aria-label="Add to a group"></select></span>
+    <span class="area-btns"><button type="button" class="aedit">Edit area</button><button type="button" class="adel danger">Remove</button></span>`;
+  const input = $('input', row);
+  input.value = cfg.names[aid] || '';
+  input.placeholder = displayName(cid) + ' · area';
+  input.oninput = () => { const v = input.value.trim(); if (v) cfg.names[aid] = v; else delete cfg.names[aid]; saveConfig(); };
+  input.onchange = () => renderGroupEditor();
+  const inGroups = cfg.groups.filter(g => g.cams.includes(aid)).map(g => g.name);
+  $('.orig', row).textContent = `↳ Zoomed watch area of ${displayName(cid)}. Shows in All cameras` + (inGroups.length ? ` and in ${inGroups.join(', ')}` : '') + '.';
+  const sel = $('select', row);
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = cfg.groups.length ? 'Add to a group…' : 'Make a group above to add it'; sel.appendChild(o0);
+  for (const g of cfg.groups) if (!g.cams.includes(aid)) { const o = document.createElement('option'); o.value = g.id; o.textContent = g.name; sel.appendChild(o); }
+  sel.onchange = () => {
+    const g = cfg.groups.find(g => g.id === sel.value);
+    if (g) { g.cams.push(aid); saveConfig(); renderGroupEditor(); renderCamTable(); }
+  };
+  $('.aedit', row).onclick = () => openZoneEditor(cid);
+  $('.adel', row).onclick = () => {
+    delete cfg.zones[cid];
+    if (cfg.zoomView) delete cfg.zoomView[cid];
+    for (const g of cfg.groups) g.cams = g.cams.filter(x => x !== aid);
+    if (typeof camState !== 'undefined') camState.delete(cid);
+    saveConfig(); renderGroupEditor(); renderCamTable();
+  };
+  lazyThumb($('img', row), aid);
+  return row;
 }
 
 const thumbObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {

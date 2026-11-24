@@ -294,3 +294,9 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .fun-cap { margin-top: 6px; font-weight: 700; color: var(--warn); }
 .fun-pic.in { animation: funIn .6s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes funIn { from { transform: translate(-50%, -50%) scale(.2) rotate(-12deg); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+.area-row { margin-left: 24px; border-left: 3px solid var(--accent); padding-left: 8px; }
+.area-row .area-btns { display: flex; gap: 6px; }
+.area-row select { padding: 4px 6px; font-size: 13px; }
+.flash-row { animation: flashRow 1.6s ease-out; }
+@keyframes flashRow { from { background: rgba(64,156,255,.35); } to { background: transparent; } }

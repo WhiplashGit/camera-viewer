@@ -65,7 +65,11 @@ function saveZone() {
   if (typeof camState !== 'undefined') camState.delete(id);
   saveConfig();
   closeZoneEditor();
-  if (!$('#setup').hidden) { renderCamTable(); renderGroupEditor(); }
+  if (!$('#setup').hidden) {
+    renderCamTable(); renderGroupEditor();
+    const r = $(`#camTable .area-row img[data-cam="${id + AREA}"]`)?.closest('.area-row');
+    if (r) { r.scrollIntoView({ block: 'center' }); r.classList.add('flash-row'); }
+  }
   else { renderTabs(); renderGrid(); }
   if (zoneOf(id) && !cfg.zoomView[id]) flash(`Added "${displayName(id + AREA)}" as its own view. Add it to any group in Setup.`, 5000);
 }
