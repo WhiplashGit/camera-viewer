@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>Help · Shop Cameras</title>
+<link rel="stylesheet" href="style.css?v=20261124045635">
+<style>
+  body { min-height: 100%; }
+  .help { max-width: 760px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
+  .help h1 { font-size: 24px; margin: 8px 0 4px; }
+  .help h2 { font-size: 19px; margin: 32px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .help h3 { font-size: 16px; margin: 18px 0 6px; }
+  .help p, .help li { color: #cfd7df; }
+  .help ul, .help ol { padding-left: 22px; margin: 6px 0; }
+  .help li { margin: 4px 0; }
+  .help kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  .help .toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  .help .toc a { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; color: var(--text); text-decoration: none; font-size: 14px; }
+  .help .toc a:hover { border-color: var(--accent); }
+  .help details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
+  .help summary { cursor: pointer; font-weight: 600; }
+  .help details[open] summary { margin-bottom: 6px; }
+  .help .note { background: var(--panel); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 6px; }
+  .help a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h2>Help</h2>
+  <div class="bar-right"><button type="button" id="back">← Back to cameras</button></div>
+</header>
+<main class="help">
+  <h1>Shop Cameras: how it works</h1>
+  <p class="muted">A light, simple way to watch the community cameras in your browser, on a laptop, phone or TV.</p>
+  <nav class="toc">
+    <a href="#start">Getting started</a><a href="#groups">Groups</a><a href="#rotate">Rotate</a>
+    <a href="#motion">Motion pop-ups</a><a href="#areas">Watch areas</a><a href="#menu">Right-click menu</a>
+    <a href="#sounds">Sounds &amp; pictures</a><a href="#history">History</a><a href="#layout">Layout</a><a href="#faq">FAQ</a>
+  </nav>
+
+  <h2 id="start">Getting started</h2>
+  <ol>
+    <li>Sign in with the camera login you were given. The page keeps you signed in; your password isn't stored.</li>
+    <li>You start on <b>All cameras</b>. Click any camera to see it full screen with live video. Press <kbd>Esc</kbd> or ✕ to go back.</li>
+    <li>Open <b>⚙ Setup</b> to rename, hide or star cameras and build your own groups.</li>
+  </ol>
+  <p class="note">Bookmark this page, or on a phone use "Add to Home Screen" so it opens like an app.</p>
+
+  <h2 id="groups">Groups and camera names</h2>
+  <ul>
+    <li><b>Make a group:</b> Setup → Groups → <b>+ Add group</b>, give it a name, then pick cameras from "Choose a camera to add…". Use ‹ to reorder and ✕ to remove.</li>
+    <li>Each group becomes a tab across the top. Keys <kbd>1</kbd>–<kbd>9</kbd> jump between tabs.</li>
+    <li><b>Rename or hide</b> a camera in Setup → Cameras. Names only change on your screen, never in the Wave app.</li>
+    <li>On a phone, the ▦ button changes how many columns you see. Swipe left/right in full screen to move between cameras.</li>
+  </ul>
+
+  <h2 id="rotate">Rotate</h2>
+  <p><b>⟳ Rotate</b> (or <kbd>R</kbd>) shows each camera in the current group full screen, one after another. Change the timing in Setup → Display → "Rotate: switch camera every".</p>
+
+  <h2 id="motion">Motion pop-ups</h2>
+  <ul>
+    <li>When <b>Motion</b> is on, the page watches cameras and pops one up when a <b>person, vehicle or animal</b> moves. Blowing leaves, shadows, lighting changes and parked cars are ignored.</li>
+    <li>By default it only watches <b>★ starred (key) cameras</b>. Change this in Setup → Motion → "Watch".</li>
+    <li>Pop-ups stack on the right: the newest is shown bigger, older ones shrink to small cards (up to 10). Click one to watch it live, ✕ to dismiss, or <b>Dismiss all</b>. They clear by themselves after 5 minutes.</li>
+    <li>Starred cameras get a <b>red, pulsing</b> pop-up. Tick "Starred cameras take over the whole screen" if you'd rather they fill the screen.</li>
+    <li>False alarm? Press <b>Not real</b> on the pop-up and that spot is ignored from then on.</li>
+    <li>Motion only works while this page is open somewhere (for example the shop computer or TV). It runs in your browser and changes nothing on the camera server.</li>
+    <li>Turn on <b>Desktop notifications</b> in Setup → Motion to get a notice when the page is in the background.</li>
+  </ul>
+
+  <h2 id="areas">Watch areas (zoom into one spot)</h2>
+  <ul>
+    <li>Setup → Cameras → <b>▢ Area</b> (or right-click a camera → "Draw watch area"). Drag a box around a door or gate and press <b>Save</b>.</li>
+    <li>Motion for that camera then only looks inside the box, and the AI gets a zoomed-in view, which helps it spot people far away.</li>
+    <li>You also get a new view called "<i>Camera</i> · area" that shows just that spot. It appears right under its camera in Setup → Cameras (blue edge) and in All cameras. Use "Add to a group…" to put it in any of your groups. Your original full view stays too.</li>
+    <li>Prefer the zoomed spot to replace the full view? Tick "Show only this area for this camera" in the area editor.</li>
+  </ul>
+
+  <h2 id="menu">Right-click a camera</h2>
+  <p>Right-click any camera tile or full-screen camera (long-press on Android) to change its name, ★ star, motion, sound, picture and watch area, or hide it, without going to Setup. (iPhones don't support this; use Setup there.)</p>
+
+  <h2 id="sounds">Sounds and pictures</h2>
+  <ul>
+    <li><b>Sound per camera:</b> pick one in Setup → Cameras or the right-click menu, e.g. a soft chime for the gate and Urgent beeps or Alarm for the shop door. ▶ plays it.</li>
+    <li><b>Your own sounds:</b> Setup → Motion → "Your sounds": <b>Upload a sound</b> (MP3, M4A or WAV up to 3 MB) or <b>🎙 Record a sound</b> (up to 10 seconds). They then show in every camera's sound list.</li>
+    <li><b>Pop-up pictures:</b> just for fun, pick an emoji (🦖 🚨 👀 …) or upload a picture for a camera. It bounces onto the screen when that camera has motion.</li>
+    <li>Browsers only play sound after you've clicked somewhere on the page once. If you hear nothing, click the page or press Test sound.</li>
+  </ul>
+
+  <h2 id="history">Motion history</h2>
+  <p><b>🕘 History</b> opens a window with every motion pop-up from the last 14 days, by day. Filter by camera or by people, vehicles or animals, click a picture to see it big, and press ▶ to try playing the recording from just before. History is kept on the device that saw the motion.</p>
+
+  <h2 id="layout">Layout and power</h2>
+  <ul>
+    <li><b>Menu bar position:</b> Setup → Display → "Menu bar": top, bottom, left or right.</li>
+    <li><b>Grid tiles</b> show snapshots by default (lightest on the computer). "Live video" is smoother but heavier.</li>
+    <li><b>Power saving:</b> after a while with no activity the screen goes black and video stops to save the computer. Motion watching keeps running and pop-ups still appear. Choose "Never" for a shop TV.</li>
+    <li><b>⛶</b> or <kbd>F</kbd> goes full screen.</li>
+  </ul>
+
+  <h2 id="faq">FAQ</h2>
+  <details open><summary>Where are my settings saved? Can someone else mess up my groups?</summary>
+    <p>Everything you change (groups, names, stars, sounds, watch areas, pictures) is saved <b>only in your browser on that device</b>. Other people using this page have their own settings, so their changes can't touch yours. Nothing here changes what anyone sees in the Wave app.</p>
+  </details>
+  <details><summary>How do I use my setup on another computer, phone or TV?</summary>
+    <p>Setup → Settings storage: type your name and a PIN and press <b>Save my copy to server</b>. On the other device, sign in, type the same name and press <b>Load this name onto this device</b>. Each person gets their own copy, and nobody can replace yours without your PIN. Uploaded sounds and pictures stay on the device you added them on.</p>
+  </details>
+  <details><summary>Everyone uses the same login. Is my copy private?</summary>
+    <p>Others could load a copy of your groups by typing your name, but they can't change or replace your saved copy without your PIN. Because the login is shared, treat the PIN as protection against accidents, not as strong security.</p>
+  </details>
+  <details><summary>Why didn't I get a pop-up when someone walked by?</summary>
+    <p>Check that Motion is on (blue), the camera is starred or "Watch" is set to all cameras, and the camera's Motion box is ticked. People far away can be too small: draw a watch area around where they walk. Setup → Motion → Recent activity shows what the AI saw and why it did or didn't pop up, and "See what the AI sees" tests a camera right away.</p>
+  </details>
+  <details><summary>Why do I get pop-ups for things that aren't there?</summary>
+    <p>Press <b>Not real</b> on the pop-up to ignore that spot. You can also lower the Sensitivity in Setup → Motion, or draw a watch area so only the part you care about is checked.</p>
+  </details>
+  <details><summary>Do I get alerts when the page is closed?</summary>
+    <p>Not yet. Motion is checked by this page while it's open. Keep it open on one computer or TV (power saving still watches for motion). Phone alerts while closed would need a change on the camera server.</p>
+  </details>
+  <details><summary>Why is there no license plate log yet?</summary>
+    <p>The front gate camera can read plates, but that feature is switched off on the Wave server, and the shared login isn't allowed to turn it on. Once the server's administrator enables the camera's analytics plugin, a plate log and alerts for chosen plates can be added here.</p>
+  </details>
+  <details><summary>The page looks out of date or a button is missing.</summary>
+    <p>The page updates itself within 5 minutes of a new version (unless Setup is open). You can also just refresh the page.</p>
+  </details>
+  <details><summary>Does this use a lot of computer power?</summary>
+    <p>Snapshot tiles and motion on starred cameras are light. Live video tiles and watching all cameras use more. If the fan spins up, switch tiles to Snapshots and watch only starred cameras.</p>
+  </details>
+</main>
+<script>document.getElementById('back').onclick = () => { if (window.opener) window.close(); else location.href = './'; };</script>
+</body>
+</html>
