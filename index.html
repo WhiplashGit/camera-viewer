@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261124050721">
+<link rel="stylesheet" href="style.css?v=20261124051530">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -263,6 +263,34 @@
         <button id="btnLogout" class="danger">Sign out</button>
       </div>
     </div>
+
+    <div class="panel">
+      <details id="ownPanel">
+        <summary><b>Owner tools</b> <span class="muted">(for the person who runs this app)</span></summary>
+        <p class="muted">Remove anything this app keeps on the camera server, such as anyone's saved setup (whatever their PIN), old files and suggestions, and mark suggestions Accepted or Not accepted. Unlock with the owner passphrase. Sounds and pictures people upload stay in their own browsers and never reach the server.</p>
+        <div id="ownLock">
+          <div class="row-fields">
+            <label>Owner passphrase <input id="ownPass" type="password" autocomplete="off" maxlength="100"></label>
+            <label id="ownPass2Wrap" hidden>Type it again <input id="ownPass2" type="password" autocomplete="off" maxlength="100"></label>
+          </div>
+          <div class="row-btns"><button id="ownUnlock" type="button" class="primary">Unlock</button><span id="ownMsg" class="muted"></span></div>
+        </div>
+        <div id="ownTools" hidden>
+          <div class="row-btns">
+            <label>Note for Accept / Not accepted (optional) <input id="ownNote" type="text" maxlength="120" placeholder="e.g. Added in the Nov 24 update"></label>
+            <button id="ownRefresh" type="button">Refresh</button>
+            <button id="ownLockBtn" type="button">Lock</button>
+          </div>
+          <div id="ownFiles" class="own-files"></div>
+          <h3 class="mt">Change owner passphrase</h3>
+          <div class="row-fields">
+            <label>New passphrase <input id="ownNew" type="password" autocomplete="new-password" maxlength="100"></label>
+            <label>Type it again <input id="ownNew2" type="password" autocomplete="new-password" maxlength="100"></label>
+          </div>
+          <div class="row-btns"><button id="ownChange" type="button">Change passphrase</button><span id="ownMsg2" class="muted"></span></div>
+        </div>
+      </details>
+    </div>
   </div>
 </section>
 
@@ -273,12 +301,13 @@
   </div>
 </template>
 
-<script src="app.js?v=20261124050721"></script>
-<script src="history-db.js?v=20261124050721"></script>
-<script src="motion.js?v=20261124050721"></script>
-<script src="power.js?v=20261124050721"></script>
-<script src="zones.js?v=20261124050721"></script>
-<script src="extras.js?v=20261124050721"></script>
-<script src="suggest.js?v=20261124050721"></script>
+<script src="app.js?v=20261124051530"></script>
+<script src="history-db.js?v=20261124051530"></script>
+<script src="motion.js?v=20261124051530"></script>
+<script src="power.js?v=20261124051530"></script>
+<script src="zones.js?v=20261124051530"></script>
+<script src="extras.js?v=20261124051530"></script>
+<script src="suggest.js?v=20261124051530"></script>
+<script src="owner.js?v=20261124051530"></script>
 </body>
 </html>

@@ -315,3 +315,13 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .sg-badge.accepted { color: var(--ok); border-color: var(--ok); }
 .sg-badge.rejected { color: var(--alert); border-color: var(--alert); }
 .sg-note { margin-top: 4px; font-size: 13px; color: var(--muted); font-style: italic; }
+
+/* Owner tools */
+#ownPanel summary { cursor: pointer; }
+#ownPanel[open] summary { margin-bottom: 8px; }
+#ownTools .row-btns label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 260px; }
+.own-files { display: grid; gap: 6px; margin-top: 10px; }
+.own-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.own-t { min-width: 0; flex: 1 1 260px; word-break: break-word; }
+.own-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.own-btns button { padding: 4px 10px; font-size: 13px; }
