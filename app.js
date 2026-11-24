@@ -5,7 +5,7 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_VERSION = '20261124041201';
+const APP_VERSION = '20261124041711';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -114,8 +114,13 @@ async function loadCameras() {
   camById = new Map(cams.map(c => [c.id, c]));
 }
 
-/* Watch area helpers (see zones.js). */
+/* Watch area helpers (see zones.js). A camera with a watch area also gets an
+ * extra "<id>~area" view that shows just that area and can go in any group. */
+const AREA = '~area';
+const baseId = id => String(id).split('~')[0];
+const isAreaView = id => String(id).endsWith(AREA);
 function zoneOf(id) {
+  id = baseId(id);
   const z = cfg.zones && cfg.zones[id];
   return z && z.w > 0.02 && z.h > 0.02 ? z : null;
 }
@@ -128,13 +133,14 @@ function zoneQuery(z, w) {
 }
 
 async function fetchSnapshot(id, w, h, opts = {}) {
-  const z = !opts.full && cfg.zoomView && cfg.zoomView[id] ? zoneOf(id) : null;
+  const b = baseId(id);
+  const z = !opts.full && (isAreaView(id) || (cfg.zoomView && cfg.zoomView[b])) ? zoneOf(b) : null;
   const q = z ? zoneQuery(z, w) : `size=${w}x${h}`;
-  const r = await api(`/rest/v2/devices/${id}/image?${q}&format=jpg`, { raw: true });
+  const r = await api(`/rest/v2/devices/${b}/image?${q}&format=jpg`, { raw: true });
   return URL.createObjectURL(await r.blob());
 }
 
-function hlsUrl(id, quality) { return `${session.base}/hls/${id}.m3u8?${quality}`; }
+function hlsUrl(id, quality) { return `${session.base}/hls/${baseId(id)}.m3u8?${quality}`; }
 
 function attachHls(video, id, quality) {
   const url = hlsUrl(id, quality);
@@ -164,14 +170,16 @@ function saveConfig() {
 }
 
 function displayName(id) {
+  if (isAreaView(id)) return cfg.names[id] || displayName(baseId(id)) + ' · area';
   return cfg.names[id] || camById.get(id)?.name || 'Unknown camera';
 }
 
-function visibleCams() { return cams.filter(c => !cfg.hidden[c.id]).map(c => c.id); }
+function visibleCams() { return cams.filter(c => !cfg.hidden[c.id]).flatMap(c => zoneOf(c.id) && !(cfg.zoomView && cfg.zoomView[c.id]) ? [c.id, c.id + AREA] : [c.id]); }
+const camExists = id => camById.has(baseId(id)) && (!isAreaView(id) || !!zoneOf(id));
 
 function allGroups() {
   const groups = [{ id: 'all', name: 'All cameras', cols: 0, cams: visibleCams() }];
-  for (const g of cfg.groups) groups.push(Object.assign({}, g, { cams: g.cams.filter(id => camById.has(id)) }));
+  for (const g of cfg.groups) groups.push(Object.assign({}, g, { cams: g.cams.filter(camExists) }));
   return groups;
 }
 
@@ -344,8 +352,9 @@ function renderGrid() {
     const t = tpl.content.firstElementChild.cloneNode(true);
     t.dataset.id = id;
     $('.tile-name', t).textContent = displayName(id);
-    if (cfg.key[id]) $('.tile-name', t).textContent = '★ ' + displayName(id);
+    if (cfg.key[baseId(id)]) $('.tile-name', t).textContent = '★ ' + displayName(id);
     t.onclick = () => openSingle(g, i);
+    t.oncontextmenu = e => { if (typeof openCamMenu === 'function') { e.preventDefault(); openCamMenu(id, e.clientX, e.clientY); } };
     if (live) {
       const v = document.createElement('video');
       v.muted = true; v.playsInline = true; v.autoplay = true;
@@ -482,7 +491,7 @@ function openSingle(group, index, opts = {}) {
   const id = group.cams[index];
   if (!id) return;
   $('#single').hidden = false;
-  $('#singleName').textContent = (cfg.key[id] ? '★ ' : '') + displayName(id);
+  $('#singleName').textContent = (cfg.key[baseId(id)] ? '★ ' : '') + displayName(id);
   if (typeof applyStageZoom === 'function') applyStageZoom(id);
   const badge = $('#singleBadge');
   badge.hidden = !opts.badge; badge.textContent = opts.badge || '';
@@ -605,6 +614,7 @@ function openSetup() {
   $('#optRefresh').value = String(cfg.refreshS);
   $('#optRotate').value = String(cfg.rotateS);
   $('#optTileMode').value = cfg.tileMode;
+  if ($('#optBar')) $('#optBar').value = cfg.barPos || 'top';
   $('#profName').value = store.get(LS_PROFILE)?.name || '';
   $('#whoami').textContent = `Signed in as ${session.user}` + (session.systemName ? ` to ${session.systemName}` : '');
   $('#syncMsg').textContent = '';
@@ -612,6 +622,7 @@ function openSetup() {
   renderCamTable();
   if (typeof renderMotionSettings === 'function') renderMotionSettings();
   if (typeof renderPowerSettings === 'function') renderPowerSettings();
+  if (typeof renderPics === 'function') renderPics();
 }
 
 function closeSetup() {
@@ -655,7 +666,7 @@ function renderGroupEditor() {
     };
     const chips = $('.group-cams', el);
     g.cams.forEach((id, ci) => {
-      if (!camById.has(id)) return;
+      if (!camExists(id)) return;
       const chip = document.createElement('span');
       chip.className = 'chip';
       const label = document.createElement('span');
@@ -671,8 +682,10 @@ function renderGroupEditor() {
     const sel = $('.gaddsel', el);
     const opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'Choose a camera to add…'; sel.appendChild(opt0);
     for (const c of cams) {
-      if (g.cams.includes(c.id)) continue;
-      const o = document.createElement('option'); o.value = c.id; o.textContent = displayName(c.id); sel.appendChild(o);
+      for (const id of zoneOf(c.id) ? [c.id, c.id + AREA] : [c.id]) {
+        if (g.cams.includes(id)) continue;
+        const o = document.createElement('option'); o.value = id; o.textContent = displayName(id) + (isAreaView(id) ? ' (zoomed watch area)' : ''); sel.appendChild(o);
+      }
     }
     const add = () => { if (sel.value) { g.cams.push(sel.value); saveConfig(); renderGroupEditor(); } };
     $('.gadd', el).onclick = add;
@@ -696,7 +709,8 @@ function renderCamTable() {
       <label title="Key camera: bigger alert"><input type="checkbox" class="ckey"> ★ Key</label></div>
       <label><input type="checkbox" class="chide"> Hide</label>
       <button type="button" class="carea" title="Draw an area to zoom in on and watch for motion"></button>
-      <span class="csound"><select aria-label="Sound for this camera"></select><button type="button" class="cplay" title="Play this sound">▶</button></span>`;
+      <span class="csound"><select aria-label="Sound for this camera"></select><button type="button" class="cplay" title="Play this sound">▶</button></span>
+      <select class="cpic" aria-label="Picture for this camera" hidden></select>`;
     const input = $('input[aria-label]', row);
     input.value = cfg.names[c.id] || '';
     input.placeholder = c.name;
@@ -719,6 +733,7 @@ function renderCamTable() {
     snd.value = soundFor(c.id);
     snd.onchange = () => { cfg.sounds = cfg.sounds || {}; cfg.sounds[c.id] = snd.value; saveConfig(); playSound(snd.value); };
     $('.cplay', row).onclick = () => playSound(snd.value);
+    if (typeof fillPicSelect === 'function') fillPicSelect($('.cpic', row), c.id);
     const area = $('.carea', row);
     area.textContent = zoneOf(c.id) ? '▣ Area set' : '▢ Area';
     area.classList.toggle('on', !!zoneOf(c.id));

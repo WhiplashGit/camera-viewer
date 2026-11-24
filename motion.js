@@ -408,6 +408,7 @@ function onDetection(id, hits, bitmap) {
   markTileMotion(id);
   if (fresh && mcfg().sound) playSound(soundFor(id));
   if (fresh) notifyDesktop(id, label);
+  if (fresh && typeof showFunPicture === 'function') showFunPicture(id, label);
   if (cfg.key[id] && mcfg().takeover) keyCameraAlert(id, label, fresh);
   showPopup(id, label, hits, bitmap);
 }
@@ -439,7 +440,7 @@ function saveHistory(id, label, canvas) {
 }
 
 function markTileMotion(id) {
-  for (const t of $$(`#grid .tile[data-id="${id}"]`)) {
+  for (const t of $$(`#grid .tile[data-id="${id}"], #grid .tile[data-id="${id}~area"]`)) {
     t.classList.add('motion');
     clearTimeout(t._motionT);
     t._motionT = setTimeout(() => t.classList.remove('motion'), 10000);

@@ -65,7 +65,9 @@ function saveZone() {
   if (typeof camState !== 'undefined') camState.delete(id);
   saveConfig();
   closeZoneEditor();
-  renderCamTable();
+  if (!$('#setup').hidden) { renderCamTable(); renderGroupEditor(); }
+  else { renderTabs(); renderGrid(); }
+  if (zoneOf(id) && !cfg.zoomView[id]) flash(`Added "${displayName(id + AREA)}" as its own view. Add it to any group in Setup.`, 5000);
 }
 
 function wireZones() {
@@ -100,7 +102,7 @@ function wireZones() {
 /* Full-screen view: zoom the live video to the camera's area. */
 function applyStageZoom(id) {
   const stage = $('#singleStage');
-  const z = cfg.zoomView && cfg.zoomView[id] ? zoneOf(id) : null;
+  const z = isAreaView(id) || (cfg.zoomView && cfg.zoomView[baseId(id)]) ? zoneOf(id) : null;
   stage.classList.toggle('zoomed', !!z);
   if (!z) return;
   const ar = (z.ar || 4 / 3) * z.w / z.h;

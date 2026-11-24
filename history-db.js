@@ -11,7 +11,7 @@ const HistoryDB = (() => {
 
   function open() {
     if (!dbp) dbp = new Promise((res, rej) => {
-      const r = indexedDB.open(DB, 2);
+      const r = indexedDB.open(DB, 3);
       r.onupgradeneeded = () => {
         const db = r.result;
         if (!db.objectStoreNames.contains(STORE)) {
@@ -19,8 +19,14 @@ const HistoryDB = (() => {
           s.createIndex('t', 't');
         }
         if (!db.objectStoreNames.contains('sounds')) db.createObjectStore('sounds', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('pictures')) db.createObjectStore('pictures', { keyPath: 'id' });
       };
-      r.onsuccess = () => res(r.result);
+      r.onsuccess = () => {
+        const db = r.result;
+        // Another tab has a newer version of this page: step aside so it can upgrade.
+        db.onversionchange = () => { db.close(); dbp = null; };
+        res(db);
+      };
       r.onerror = () => rej(r.error);
     });
     return dbp;
@@ -108,5 +114,22 @@ const HistoryDB = (() => {
     const tx = db.transaction('sounds', 'readwrite'); tx.objectStore('sounds').delete(id); await done(tx);
   }
 
-  return { add, get, page, clear, prune, channel: chan, soundsAll, soundPut, soundDel };
+  /* Uploaded pop-up pictures: {id, name, blob} */
+  async function picsAll() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction('pictures').objectStore('pictures').getAll();
+      r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error);
+    });
+  }
+  async function picPut(p) {
+    const db = await open();
+    const tx = db.transaction('pictures', 'readwrite'); tx.objectStore('pictures').put(p); await done(tx);
+  }
+  async function picDel(id) {
+    const db = await open();
+    const tx = db.transaction('pictures', 'readwrite'); tx.objectStore('pictures').delete(id); await done(tx);
+  }
+
+  return { add, get, page, clear, prune, channel: chan, soundsAll, soundPut, soundDel, picsAll, picPut, picDel };
 })();

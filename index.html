@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261124041201">
+<link rel="stylesheet" href="style.css?v=20261124041711">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -80,7 +80,8 @@
     </div>
     <p class="muted">Drag a box around the spot to watch, like your door or the gate. Motion pop-ups will only look inside it, and the AI gets a zoomed-in view, which helps it spot people.</p>
     <div id="zoneStage" class="zone-stage"><img id="zoneImg" alt=""><div id="zoneRect" class="zone-rect" hidden></div></div>
-    <label class="check"><input type="checkbox" id="zoneZoom"> Also zoom the grid tile and full-screen view to this area</label>
+    <label class="check"><input type="checkbox" id="zoneZoom"> Show only this area for this camera (replace the full view)</label>
+    <p class="muted">Left unticked, you keep the full view and also get a separate "· area" view of just this spot, which you can add to any group.</p>
   </div>
 </div>
 
@@ -136,6 +137,14 @@
             <option value="60">1 hour</option>
           </select>
         </label>
+        <label>Menu bar
+          <select id="optBar">
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left side</option>
+            <option value="right">Right side</option>
+          </select>
+        </label>
         <label>Grid tiles show
           <select id="optTileMode">
             <option value="snap">Snapshots (lightest)</option>
@@ -147,7 +156,7 @@
 
     <div class="panel">
       <h3>Motion pop-ups</h3>
-      <p class="muted">The page checks every camera and pops one up only when a person, vehicle or animal moves. Grass, leaves, shadows and lighting changes are ignored. Starred key cameras take over the full screen with a sound. This runs only while the page is open and changes nothing on the server.</p>
+      <p class="muted">The page checks every camera and pops one up only when a person, vehicle or animal moves. Grass, leaves, shadows and lighting changes are ignored. Starred key cameras get a red, pulsing pop-up. This runs only while the page is open and changes nothing on the server.</p>
       <div class="row-fields">
         <label class="check"><input type="checkbox" id="optMotionOn"> Motion pop-ups on</label>
         <label>Watch
@@ -181,9 +190,17 @@
       <p class="muted">Upload your own alert sounds (MP3, M4A or WAV, up to 3 MB), then pick one for any camera in the list below. Uploaded sounds are kept in this browser, so add them on each device you use.</p>
       <div class="row-btns">
         <label class="upload-btn"><input type="file" id="soundFile" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg" hidden>⬆ Upload a sound</label>
+        <button id="soundRec" type="button">🎙 Record a sound</button>
         <span id="soundMsg" class="muted"></span>
       </div>
       <div id="customSounds" class="group-cams"></div>
+      <h3 class="mt">Pop-up pictures</h3>
+      <p class="muted">Just for fun: upload a picture, then pick it for a camera (in the camera list below, or right-click a camera). When that camera has motion, the picture pops up for a few seconds. Kept in this browser only.</p>
+      <div class="row-btns">
+        <label class="upload-btn"><input type="file" id="picFile" accept="image/*" hidden>⬆ Upload a picture</label>
+        <span id="picMsg" class="muted"></span>
+      </div>
+      <div id="customPics" class="group-cams"></div>
       <div>
       </div>
       <p id="motionStats" class="muted mt"></p>
@@ -198,7 +215,7 @@
 
     <div class="panel">
       <h3>Cameras</h3>
-      <p class="muted">Pick a sound for each camera, rename it, hide it, star it as a key camera (front gate, front door) for the bigger alert, or untick Motion to never get pop-ups from it.</p>
+      <p class="muted">Tip: on the camera screen you can also right-click any camera (long-press on Android) to change these. Pick a sound for each camera, rename it, hide it, star it as a key camera (front gate, front door) for the bigger alert, or untick Motion to never get pop-ups from it.</p>
       <input id="camFilter" class="filter" placeholder="Filter cameras…" type="search">
       <div id="camTable" class="cam-table"></div>
     </div>
@@ -232,10 +249,11 @@
   </div>
 </template>
 
-<script src="app.js?v=20261124041201"></script>
-<script src="history-db.js?v=20261124041201"></script>
-<script src="motion.js?v=20261124041201"></script>
-<script src="power.js?v=20261124041201"></script>
-<script src="zones.js?v=20261124041201"></script>
+<script src="app.js?v=20261124041711"></script>
+<script src="history-db.js?v=20261124041711"></script>
+<script src="motion.js?v=20261124041711"></script>
+<script src="power.js?v=20261124041711"></script>
+<script src="zones.js?v=20261124041711"></script>
+<script src="extras.js?v=20261124041711"></script>
 </body>
 </html>
