@@ -7,11 +7,18 @@
 'use strict';
 
 const SUGGEST_DIR = 'camera-viewer-suggestions/';
+/* Status is set during review (Jon decides): stored in the same file as
+ * status ('pending' | 'accepted' | 'not-accepted'), statusAt (ms), statusNote. */
+const SUGGEST_STATUS = {
+  pending: { label: 'Pending', cls: 'pending' },
+  accepted: { label: 'Accepted', cls: 'accepted' },
+  'not-accepted': { label: 'Not accepted', cls: 'rejected' },
+};
 
 async function sendSuggestion({ name, kind, text }) {
   const t = new Date();
   const file = SUGGEST_DIR + t.toISOString().replace(/[:.]/g, '-') + '-' + Math.random().toString(36).slice(2, 8) + '.json';
-  const doc = { t: t.getTime(), name: name.slice(0, 40), kind, text: text.slice(0, 2000), version: APP_VERSION, device: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'phone' : 'computer' };
+  const doc = { t: t.getTime(), name: name.slice(0, 40), kind, text: text.slice(0, 2000), status: 'pending', version: APP_VERSION, device: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'phone' : 'computer' };
   await api('/rest/v2/storedFiles/' + file, { method: 'PUT', json: { data: b64encode(JSON.stringify(doc)) } });
 }
 
@@ -22,7 +29,7 @@ async function listSuggestions(limit = 40) {
     try {
       const r = await api('/rest/v2/storedFiles/' + p);
       let txt = r.data; try { txt = b64decode(r.data); } catch {}
-      return JSON.parse(txt);
+      return Object.assign(JSON.parse(txt), { path: p });
     } catch { return null; }
   }));
   return out.filter(Boolean).sort((a, b) => b.t - a.t);
@@ -39,8 +46,13 @@ async function renderSuggestions() {
       const el = document.createElement('div'); el.className = 'sg-item';
       const head = document.createElement('div'); head.className = 'sg-head';
       head.textContent = `${s.kind || 'Idea'} · ${s.name || 'Someone'} · ${new Date(s.t).toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+      const st = SUGGEST_STATUS[s.status] || SUGGEST_STATUS.pending;
+      const badge = document.createElement('span'); badge.className = 'sg-badge ' + st.cls; badge.textContent = st.label;
+      head.prepend(badge);
       const body = document.createElement('div'); body.className = 'sg-text'; body.textContent = s.text;
-      el.append(head, body); box.appendChild(el);
+      el.append(head, body);
+      if (s.statusNote) { const n = document.createElement('div'); n.className = 'sg-note'; n.textContent = s.statusNote; el.appendChild(n); }
+      box.appendChild(el);
     }
   } catch (e) { if (!handleError(e)) box.textContent = 'Could not load suggestions: ' + e.message; }
 }

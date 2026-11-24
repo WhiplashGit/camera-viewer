@@ -310,3 +310,8 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .sg-item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .sg-head { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .sg-text { white-space: pre-wrap; word-break: break-word; }
+.sg-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-right: 6px; border: 1px solid var(--line); }
+.sg-badge.pending { color: var(--muted); }
+.sg-badge.accepted { color: var(--ok); border-color: var(--ok); }
+.sg-badge.rejected { color: var(--alert); border-color: var(--alert); }
+.sg-note { margin-top: 4px; font-size: 13px; color: var(--muted); font-style: italic; }

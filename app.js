@@ -5,7 +5,7 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_VERSION = '20261124050338';
+const APP_VERSION = '20261124050721';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
