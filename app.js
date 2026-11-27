@@ -5,8 +5,8 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_RELEASE = '1.12';           // visible version number, set by bump.sh from releases.json
-const APP_VERSION = '20261124052322';
+const APP_RELEASE = '1.13';           // visible version number, set by bump.sh from releases.json
+const APP_VERSION = '20261127161932';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -254,11 +254,20 @@ function showLogin(msg, base) {
 async function startViewer() {
   showScreen('viewer');
   flash('Loading cameras…');
-  try {
-    await loadCameras();
-  } catch (e) {
-    if (!handleError(e)) flash('Could not load cameras: ' + e.message, 6000);
-    return;
+  // If the camera server can't be reached, say why and keep trying by itself.
+  for (let tries = 0; ; tries++) {
+    try { await loadCameras(); break; }
+    catch (e) {
+      if (handleError(e)) return;
+      const code = (String(e.message).match(/^\d{3}/) || [])[0];
+      const offline = !code || /^5/.test(code);
+      const when = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      flash(offline
+        ? `Can't reach the camera server through Wave Cloud${code ? ` (error ${code})` : ''}. The server, or the shop's internet, is probably down. This isn't a problem with your settings. Trying again every 30 seconds (last try ${when}).`
+        : `Could not load cameras: ${e.message}. Trying again every 30 seconds.`);
+      await sleep(30000);
+      if (!session) return;
+    }
   }
   flash('');
   renderTabs();

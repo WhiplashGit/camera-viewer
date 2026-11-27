@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.13",
+    "title": "Clearer message when the camera server is offline",
+    "items": [
+      "Fix: when the camera server can't be reached (for example error 503 because the server or the shop's internet is down), the page now explains that and keeps retrying every 30 seconds, then loads the cameras by itself when the server is back."
+    ],
+    "date": "2026-11-27T16:19:32Z"
+  },
+  {
     "version": "1.12",
     "title": "Version number and release notes",
     "items": [

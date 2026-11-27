@@ -331,3 +331,4 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 .ver-tag:hover { color: var(--text); border-color: var(--accent); }
 @media (max-width: 520px) { .ver-bar { display: none; } }
 body[data-bar="left"] #viewer .ver-bar, body[data-bar="right"] #viewer .ver-bar { align-self: flex-start; }
+.status { max-width: min(640px, calc(100vw - 32px)); white-space: normal; text-align: center; }
