@@ -332,3 +332,9 @@ body[data-bar="right"] .popups { right: calc(clamp(64px, 16vw, 180px) + 12px); t
 @media (max-width: 520px) { .ver-bar { display: none; } }
 body[data-bar="left"] #viewer .ver-bar, body[data-bar="right"] #viewer .ver-bar { align-self: flex-start; }
 .status { max-width: min(640px, calc(100vw - 32px)); white-space: normal; text-align: center; }
+
+/* Free zoom on the full-screen camera (zoom.js) */
+.pan { position: absolute; inset: 0; transform-origin: 0 0; touch-action: none; }
+.single.zooming .pan { cursor: grab; }
+.single.zooming.dragging .pan { cursor: grabbing; }
+#singleZoom { font-variant-numeric: tabular-nums; }

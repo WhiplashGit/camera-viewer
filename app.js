@@ -5,8 +5,8 @@
  * PIN of their choosing, and nobody else's setup is ever loaded automatically. */
 'use strict';
 
-const APP_RELEASE = '1.13';           // visible version number, set by bump.sh from releases.json
-const APP_VERSION = '20261127161932';
+const APP_RELEASE = '1.14';           // visible version number, set by bump.sh from releases.json
+const APP_VERSION = '20261128015424';
 const DEFAULT_BASE = 'https://eee03bc4-c609-4a1a-84a9-6dc9334f4857.relay.vmsproxy.com';
 const LS_SESSION = 'cv.session';
 const LS_CONFIG = 'cv.config';
@@ -604,6 +604,7 @@ function restartRotation() {
   rotateTimer = setInterval(() => {
     if (!$('#setup').hidden || $('#viewer').hidden) return;
     if (typeof isKeyAlertActive === 'function' && isKeyAlertActive()) return;
+    if (single && typeof isZoomed === 'function' && isZoomed()) return;   // looking closely: hold
     if (single) stepSingle(1);
     else { const g = activeGroup(); if (g.cams.length) openSingle(g, 0); }
   }, cfg.rotateS * 1000);
@@ -898,12 +899,16 @@ function wire() {
 // Swipe left/right on the full-screen camera to change camera, down to close.
 function wireSwipe() {
   const el = $('#single');
-  let x0 = 0, y0 = 0, t0 = 0;
+  let x0 = 0, y0 = 0, t0 = 0, multi = false;
+  const zoomed = () => typeof isZoomed === 'function' && isZoomed();
   el.addEventListener('touchstart', e => {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1) { multi = true; return; }
+    multi = false;
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
   }, { passive: true });
   el.addEventListener('touchend', e => {
+    // Pinching or zoomed in: fingers move the picture, not the camera.
+    if (multi || zoomed() || e.touches.length) return;
     if (e.target.closest('button') || Date.now() - t0 > 800) return;
     const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) userStep(dx < 0 ? 1 : -1);
