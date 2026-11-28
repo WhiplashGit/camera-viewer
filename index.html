@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Cameras">
 <meta name="theme-color" content="#0b0d10">
 <title>Shop Cameras</title>
-<link rel="stylesheet" href="style.css?v=20261127161932">
+<link rel="stylesheet" href="style.css?v=20261128015424">
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 </head>
 <body>
@@ -55,15 +55,18 @@
 
 <!-- Single camera -->
 <div id="single" class="single" hidden>
-  <div id="singleStage" class="stage">
-    <img id="singleImg" alt="" hidden>
-    <video playsinline muted autoplay></video>
-    <video playsinline muted autoplay></video>
+  <div id="singlePan" class="pan">
+    <div id="singleStage" class="stage">
+      <img id="singleImg" alt="" hidden>
+      <video playsinline muted autoplay></video>
+      <video playsinline muted autoplay></video>
+    </div>
   </div>
   <div class="single-top">
     <span id="singleName" class="single-name"></span>
     <span id="singleBadge" class="badge" hidden></span>
     <span class="spacer"></span>
+    <button id="singleZoom" class="toggle on" title="Zoomed in: click to zoom back out (0)" hidden>1×</button>
     <button id="singleIgnore" title="Not a real person/vehicle: never alert for this spot again" hidden>Not real</button>
     <button id="singleRotate" class="toggle" title="Rotate through this group (R)">⟳</button>
     <button id="singlePrev" title="Previous (←)">‹</button>
@@ -303,13 +306,14 @@
   </div>
 </template>
 
-<script src="app.js?v=20261127161932"></script>
-<script src="history-db.js?v=20261127161932"></script>
-<script src="motion.js?v=20261127161932"></script>
-<script src="power.js?v=20261127161932"></script>
-<script src="zones.js?v=20261127161932"></script>
-<script src="extras.js?v=20261127161932"></script>
-<script src="suggest.js?v=20261127161932"></script>
-<script src="owner.js?v=20261127161932"></script>
+<script src="app.js?v=20261128015424"></script>
+<script src="history-db.js?v=20261128015424"></script>
+<script src="motion.js?v=20261128015424"></script>
+<script src="power.js?v=20261128015424"></script>
+<script src="zones.js?v=20261128015424"></script>
+<script src="extras.js?v=20261128015424"></script>
+<script src="suggest.js?v=20261128015424"></script>
+<script src="owner.js?v=20261128015424"></script>
+<script src="zoom.js?v=20261128015424"></script>
 </body>
 </html>

@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.14",
+    "title": "Zoom in on a camera",
+    "items": [
+      "New (from the Suggest box): zoom in on the full-screen camera. Scroll or pinch to zoom, drag to move around, double-click or double-tap to zoom in or out. The zoom button at the top resets it. See Help → Zoom in on a camera.",
+      "Rotate waits while you're zoomed in, and swiping between cameras on a phone is paused while zoomed so you can move around the picture."
+    ],
+    "date": "2026-11-28T01:54:24Z"
+  },
+  {
     "version": "1.13",
     "title": "Clearer message when the camera server is offline",
     "items": [
